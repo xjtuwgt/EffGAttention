@@ -97,9 +97,9 @@ class GDTLayer(nn.Module):
             graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
             e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
+            # graph.edata.update({'e': e})
+            # graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            # e = (graph.edata.pop('e')/self._head_dim)
             # compute softmax
             if self.ppr_diff:
                 graph.edata['a'] = edge_softmax(graph, e)
