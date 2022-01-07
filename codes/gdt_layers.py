@@ -113,8 +113,8 @@ class GDTLayer(nn.Module):
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
-                resval = self.res_fc(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
-                rst = rst + resval
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
 
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
