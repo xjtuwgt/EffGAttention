@@ -74,8 +74,7 @@ class GDTLayer(nn.Module):
         The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
         The attention weights are using xavier initialization method.
         """
-        # gain = nn.init.calculate_gain('relu')
-        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
+        gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
@@ -113,7 +112,7 @@ class GDTLayer(nn.Module):
                 a_score = edge_softmax(graph, e)
                 a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
                                                      sparse_mode=self.sparse_mode)
-                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score, attn_mask=a_mask,
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
                                                 top_k_sum=a_top_sum)
                 if self.ppr_diff:
                     graph.edata['a'] = a_n
