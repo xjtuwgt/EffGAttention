@@ -114,7 +114,6 @@ class GDTLayer(nn.Module):
                 # compute softmax
                 if self.ppr_diff:
                     graph.edata['a'] = edge_softmax(graph, e)
-                    # graph.edata['a'] = relu_edge_normalization(graph, e)
                     rst = self.ppr_estimation(graph=graph)
                 else:
                     graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)
