@@ -86,13 +86,13 @@ def default_parser():
     parser.add_argument('--num_classes', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--in_feat_drop', type=float, default=0.5)
-    parser.add_argument('--feat_drop', type=float, default=0.4)
-    parser.add_argument('--attn_drop', type=float, default=0.4)
+    parser.add_argument('--feat_drop', type=float, default=0.3)
+    parser.add_argument('--attn_drop', type=float, default=0.3)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
     parser.add_argument('--stanford', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--gnn_hop_num', type=int, default=6)
+    parser.add_argument('--gnn_hop_num', type=int, default=8)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--head_num', type=int, default=8)
