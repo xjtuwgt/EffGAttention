@@ -54,7 +54,7 @@ class GDTLayer(nn.Module):
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
         self.ff_layer_norm = layerNorm(self._num_heads * self._head_dim)
         self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._num_heads * self._head_dim,
-                                                          d_hidden=8 * self._num_heads * self._head_dim)
+                                                          d_hidden=4 * self._num_heads * self._head_dim)
         self.ppr_diff = ppr_diff
         self.reset_parameters()
 
