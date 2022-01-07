@@ -16,7 +16,7 @@ import torch.nn.functional as F
 import dgl
 from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
 
-from gat import GAT
+from baselines.gat import GAT
 from baselines.utils_gat import EarlyStopping
 from codes.utils import seed_everything
 from graph_data.citation_graph_data import citation_train_valid_test, citation_graph_reconstruction, \
