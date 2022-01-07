@@ -78,7 +78,7 @@ def default_parser():
                         help='Directory to save model and summaries')
     parser.add_argument('--data_path', type=str, default=HOME_DATA_FOLDER)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--citation_name', type=str, default='citeseer')
+    parser.add_argument('--citation_name', type=str, default='cora')
     parser.add_argument('--ogb_node_name', type=str, default='ogbn-arxiv')
     parser.add_argument('--graph_type', type=str, default='citation', choices=["citation", "ogb"])
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
