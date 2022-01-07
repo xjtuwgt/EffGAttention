@@ -8,7 +8,7 @@ from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionwiseFeedForward, small_init_gain
-from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization, relu_edge_normalization
+from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
 
 
 class GDTLayer(nn.Module):
