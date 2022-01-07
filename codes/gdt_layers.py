@@ -35,6 +35,7 @@ class GDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent_out = nn.Linear(self._head_dim * self._num_heads, self._head_dim * self._num_heads, bias=True)
         self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
 
         self.in_feat_drop = nn.Dropout(in_feat_drop)
@@ -71,6 +72,7 @@ class GDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent_out.weight, gain=gain)
         nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
@@ -95,11 +97,11 @@ class GDTLayer(nn.Module):
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, out_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
+            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
+            e = self.attn_activation(graph.edata.pop('e')/math.sqrt(self._head_dim))
             # compute softmax
             if self.ppr_diff:
                 graph.edata['a'] = edge_softmax(graph, e)
@@ -109,16 +111,21 @@ class GDTLayer(nn.Module):
                 # # message passing
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata.pop('ft')
+
+            rst = rst.flatten(1)
+            rst = self.fc_ent_out(self.feat_drop(rst))
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
                 if not isinstance(self.res_fc, Identity):
-                    resval = self.res_fc(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
+                    # resval = self.res_fc(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
+                    resval = self.res_fc(self.feat_drop(feat))
                 else:
-                    resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                    # resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                    resval = self.res_fc(feat)
                 rst = self.feat_drop(rst) + resval
 
-            rst = rst.flatten(1)
+            # rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
 
