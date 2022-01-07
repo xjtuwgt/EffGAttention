@@ -110,18 +110,27 @@ class GDTLayer(nn.Module):
             e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
-                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=e, k=self._top_k, p=self._top_p,
+                a = edge_softmax(graph, e)
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a, k=self._top_k, p=self._top_p,
                                                      sparse_mode=self.sparse_mode)
-                e = top_kp_attn_normalization(graph=graph, attn_scores=e, attn_mask=a_mask, top_k_sum=a_top_sum)
-            # compute softmax
-            if self.ppr_diff:
-                graph.edata['a'] = edge_softmax(graph, e)
-                rst = self.ppr_estimation(graph=graph)
+                a = top_kp_attn_normalization(graph=graph, attn_scores=a, attn_mask=a_mask, top_k_sum=a_top_sum)
+                if self.ppr_diff:
+                    graph.edata['a'] = a
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(a)
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
             else:
-                graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)
-                # # message passing
-                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                rst = graph.dstdata.pop('ft')
+                # compute softmax
+                if self.ppr_diff:
+                    graph.edata['a'] = edge_softmax(graph, e)
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)
+                    # # message passing
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
 
             # residual
             if self.res_fc is not None:
