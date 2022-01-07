@@ -132,9 +132,9 @@ class GDTLayer(nn.Module):
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
-                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.srcdata['h'] = feat
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
