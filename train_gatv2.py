@@ -13,6 +13,7 @@ import dgl
 from dgl.data import register_data_args
 from baselines.gatv2 import GATv2
 from codes.utils import seed_everything
+from codes.gpu_utils import get_single_free_gpu
 from baselines.utils_gat import EarlyStopping
 from graph_data.citation_graph_data import citation_train_valid_test, citation_graph_reconstruction, \
     citation_graph_rand_split_construction
@@ -39,13 +40,21 @@ def main(args):
     # load and preprocess dataset
 
     seed_everything(seed=args.rand_seed)
+    if torch.cuda.is_available():
+        gpu_idx, _ = get_single_free_gpu()
+        device = torch.device("cuda:{}".format(gpu_idx) if torch.cuda.is_available() else "cpu")
+    else:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
     g, _, _, n_classes, _ = citation_graph_reconstruction(dataset=args.dataset)
     # g, _, _, n_classes, _ = citation_graph_rand_split_construction(dataset=args.dataset)
-    if args.gpu < 0:
-        cuda = False
-    else:
-        cuda = True
-        g = g.int().to(args.gpu)
+    # if args.gpu < 0:
+    #     cuda = False
+    # else:
+    #     cuda = True
+    #     g = g.int().to(args.gpu)
+
+    g = g.int().to(device)
 
     features = g.ndata['feat']
     labels = g.ndata['label']
@@ -82,10 +91,11 @@ def main(args):
                   args.negative_slope,
                   args.residual)
     print(model)
-    if args.early_stop:
-        stopper = EarlyStopping(patience=100)
-    if cuda:
-        model.cuda()
+    # if args.early_stop:
+    #     stopper = EarlyStopping(patience=100)
+    # if cuda:
+    #     model.cuda()
+    model.to(device)
     loss_fcn = torch.nn.CrossEntropyLoss()
 
     # use optimizer
