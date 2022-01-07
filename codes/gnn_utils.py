@@ -96,7 +96,6 @@ def top_p_attention(graph: DGLHeteroGraph, attn_scores: Tensor, p: float = 0.75)
         cumulative_attends = cumulative_attends.squeeze(-1).transpose(1, 2).contiguous().view(batch_size * head_num,
                                                                                               neighbor_num)
         ret_a_sum = cumulative_attends[row_arrange_idx, top_p_score_idx].view(batch_size, head_num, 1)
-        # print(ret_a_sum[0].squeeze(-1))
         return {'top_a': ret_a, 'top_as': ret_a_sum}
 
     with graph.local_scope():
