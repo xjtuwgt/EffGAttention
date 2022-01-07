@@ -38,6 +38,7 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
     patience_count = 0
     n_edges = g.number_of_edges()
     loss_fcn = torch.nn.CrossEntropyLoss()
+    torch.autograd.set_detect_anomaly(True)
     for epoch in range(args.num_train_epochs):
         model.train()
         if epoch >= 3:
