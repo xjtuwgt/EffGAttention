@@ -93,11 +93,13 @@ def main(args):
     args.num_classes = n_classes
     args.node_emb_dim = g.ndata['feat'].shape[1]
 
-    if args.gpu < 0:
-        cuda = False
-    else:
-        cuda = True
-        g = g.int().to(args.gpu)
+    # if args.gpu < 0:
+    #     cuda = False
+    # else:
+    #     cuda = True
+    #     g = g.int().to(args.gpu)
+
+    g = g.int().to(args.device)
 
     features = g.ndata['feat']
     labels = g.ndata['label']
@@ -121,9 +123,10 @@ def main(args):
     # g = dgl.add_self_loop(g)
     # create model
     model = GDTEncoder(config=args)
+    model.to(args.device)
     print(model)
-    if cuda:
-        model.cuda()
+    # if cuda:
+    #     model.cuda()
     # use optimizer
     optimizer = AdamW(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
