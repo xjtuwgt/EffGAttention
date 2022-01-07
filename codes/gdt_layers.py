@@ -21,7 +21,6 @@ class GDTLayer(nn.Module):
                  top_k: int = 5,
                  top_p: float = 0.75,
                  sparse_mode: str = 'top_k',
-                 in_feat_drop: float = 0.1,
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  negative_slope: float = 0.2,
@@ -45,7 +44,6 @@ class GDTLayer(nn.Module):
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
         self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
 
-        self.in_feat_drop = nn.Dropout(in_feat_drop)
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
         self.attn_activation = nn.LeakyReLU(negative_slope)
@@ -58,9 +56,8 @@ class GDTLayer(nn.Module):
             self.register_buffer('res_fc', None)
 
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
-        self.ff_layer_norm = layerNorm(self._num_heads * self._head_dim)
-        self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._num_heads * self._head_dim,
-                                                          d_hidden=4 * self._num_heads * self._head_dim)
+        self.ff_layer_norm = layerNorm(self._out_feats)
+        self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
         self.reset_parameters()
 
@@ -94,7 +91,7 @@ class GDTLayer(nn.Module):
                                'the issue. Setting ``allow_zero_in_degree`` '
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
-            in_head = in_dst = self.in_feat_drop(self.graph_layer_norm(feat))
+            in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
             feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
