@@ -96,7 +96,7 @@ def default_parser():
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=2)
-    parser.add_argument('--negative_slope', type=float, default=0.2)
+    parser.add_argument('--negative_slope', type=float, default=1e9)
     parser.add_argument('--top_p', type=float, default=0.75)
     parser.add_argument('--top_k', type=int, default=4)
     parser.add_argument('--sparse_mode', type=str, default='no_sparse', choices=['top_k', 'top_p', 'no_sparse'])
