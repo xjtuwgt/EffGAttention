@@ -8,6 +8,7 @@ from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionwiseFeedForward, small_init_gain
+from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
 
 
 class GDTLayer(nn.Module):
@@ -17,6 +18,9 @@ class GDTLayer(nn.Module):
                  num_heads: int,
                  hop_num: int = 5,
                  alpha: float = 0.15,
+                 top_k: int = 5,
+                 top_p: float = 0.75,
+                 sparse_mode: str = 'top_k',
                  in_feat_drop: float = 0.1,
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
@@ -24,6 +28,10 @@ class GDTLayer(nn.Module):
                  residual=True,
                  ppr_diff=True):
         super(GDTLayer, self).__init__()
+
+        self.sparse_mode = sparse_mode
+        self._top_k, self._top_p = top_k, top_p
+        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
 
         self._hop_num = hop_num
         self._alpha = alpha
@@ -100,6 +108,11 @@ class GDTLayer(nn.Module):
             graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.sparse_mode != 'no_sparse':
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=e, k=self.top_k, p=self.top_p,
+                                                     sparse_mode=self.sparse_mode)
+                e = top_kp_attn_normalization(graph=graph, attn_scores=e, attn_mask=a_mask, top_k_sum=a_top_sum)
             # compute softmax
             if self.ppr_diff:
                 graph.edata['a'] = edge_softmax(graph, e)
