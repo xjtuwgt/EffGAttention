@@ -26,8 +26,7 @@ class GDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  negative_slope: float = 0.2,
                  residual=True,
-                 ppr_diff=True,
-                 layer_num: int = 0):
+                 ppr_diff=True):
         super(GDTLayer, self).__init__()
 
         self.sparse_mode = sparse_mode
@@ -63,9 +62,9 @@ class GDTLayer(nn.Module):
         self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         self.ppr_diff = ppr_diff
-        self.reset_parameters(layer_num=layer_num)
+        self.reset_parameters()
 
-    def reset_parameters(self, layer_num):
+    def reset_parameters(self):
         """
         Description
         -----------
@@ -75,10 +74,7 @@ class GDTLayer(nn.Module):
         The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
         The attention weights are using xavier initialization method.
         """
-        if layer_num == 0:
-            gain = 1. / math.sqrt(self._out_feats)
-        else:
-            gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
+        gain = 1. / math.sqrt(self._out_feats)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)

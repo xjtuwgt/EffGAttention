@@ -20,8 +20,7 @@ class GDTEncoder(nn.Module):
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
                                                   residual=self.config.residual,
-                                                  ppr_diff=self.config.ppr_diff,
-                                                  layer_num=0))
+                                                  ppr_diff=self.config.ppr_diff))
 
         for _ in range(1, self.config.layers):
             self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.hidden_dim,
@@ -36,8 +35,7 @@ class GDTEncoder(nn.Module):
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
-                                                      ppr_diff=self.config.ppr_diff,
-                                                      layer_num=_))
+                                                      ppr_diff=self.config.ppr_diff))
 
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
