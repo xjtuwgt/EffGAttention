@@ -92,14 +92,14 @@ class GDTLayer(nn.Module):
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.srcdata.update({'eh': feat_head, 'ft': feat_head})  # (num_src_edge, num_heads, out_dim)
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, out_dim)
             graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
-            # graph.edata.update({'e': e})
-            # graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            # e = (graph.edata.pop('e')/self._head_dim)
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
             # compute softmax
             if self.ppr_diff:
                 graph.edata['a'] = edge_softmax(graph, e)
