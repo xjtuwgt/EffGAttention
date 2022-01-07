@@ -99,7 +99,7 @@ class GDTLayer(nn.Module):
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
+            e = self.attn_activation(graph.edata.pop('e')/math.sqrt(self._head_dim))
             # compute softmax
             if self.ppr_diff:
                 graph.edata['a'] = edge_softmax(graph, e)
