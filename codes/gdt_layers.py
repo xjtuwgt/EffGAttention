@@ -35,7 +35,6 @@ class GDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.fc_ent_out = nn.Linear(self._head_dim * self._num_heads, self._head_dim * self._num_heads, bias=True)
         self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
 
         self.in_feat_drop = nn.Dropout(in_feat_drop)
@@ -67,12 +66,10 @@ class GDTLayer(nn.Module):
         The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
         The attention weights are using xavier initialization method.
         """
-        # gain = nn.init.calculate_gain('relu')
-        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
+        gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
-        nn.init.xavier_normal_(self.fc_ent_out.weight, gain=gain)
         nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
@@ -112,20 +109,13 @@ class GDTLayer(nn.Module):
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata.pop('ft')
 
-            rst = rst.flatten(1)
-            rst = self.fc_ent_out(self.feat_drop(rst))
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
-                if not isinstance(self.res_fc, Identity):
-                    # resval = self.res_fc(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
-                    resval = self.res_fc(self.feat_drop(feat))
-                else:
-                    # resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
-                    resval = self.res_fc(feat)
-                rst = self.feat_drop(rst) + resval
+                resval = self.res_fc(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
+                rst = rst + resval
 
-            # rst = rst.flatten(1)
+            rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
 
