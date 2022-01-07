@@ -127,8 +127,8 @@ class GDTLayer(nn.Module):
                 rst = self.feat_drop(rst) + resval
 
             rst = rst.flatten(1)
-            # ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            # rst = self.feat_drop(ff_rst) + rst  # residual
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = self.feat_drop(ff_rst) + rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
