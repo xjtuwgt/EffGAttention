@@ -99,7 +99,7 @@ def default_parser():
     parser.add_argument('--layers', type=int, default=32)
     parser.add_argument('--negative_slope', type=float, default=0.2)
     parser.add_argument('--top_p', type=float, default=0.75)
-    parser.add_argument('--top_k', type=int, default=5)
+    parser.add_argument('--top_k', type=int, default=8)
     parser.add_argument('--sparse_mode', type=str, default='top_k', choices=['top_k', 'top_p', 'no_sparse'])
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--eval_batch_size', type=int, default=32)
