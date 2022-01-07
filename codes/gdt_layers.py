@@ -8,7 +8,7 @@ from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionwiseFeedForward, small_init_gain
-from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
+from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization, relu_edge_normalization
 
 
 class GDTLayer(nn.Module):
@@ -121,7 +121,8 @@ class GDTLayer(nn.Module):
             else:
                 # compute softmax
                 if self.ppr_diff:
-                    graph.edata['a'] = edge_softmax(graph, e)
+                    # graph.edata['a'] = edge_softmax(graph, e)
+                    graph.edata['a'] = relu_edge_normalization(graph, e)
                     rst = self.ppr_estimation(graph=graph)
                 else:
                     graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)

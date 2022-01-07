@@ -34,6 +34,26 @@ def edge_udf_attn_func(edges):
     return {'attn_mask': attention_mask}
 
 
+def relu_edge_normalization(graph: DGLHeteroGraph, attn_scores: Tensor):
+    def attn_sum_red_func(nodes):
+        edge_attention_score = nodes.mailbox['m_a']
+        attn_score_sum = edge_attention_score.sum(dim=1)
+        return {'attn_sum': attn_score_sum}
+
+    def edge_udf_attn_normalization_func(edges):
+        attention_scores = edges.data['ta']
+        sum_attn_scores = edges.dst['attn_sum'] + 1e-6
+        norm_attends = attention_scores / sum_attn_scores
+        return {'norm_attn': norm_attends}
+
+    with graph.local_scope():
+        graph.edata['ta'] = F.relu(attn_scores)
+        graph.update_all(edge_message_func, attn_sum_red_func)
+        graph.apply_edges(edge_udf_attn_normalization_func)
+        norm_attentions = graph.edata.pop('norm_attn')
+        return norm_attentions
+
+
 def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
     """
     :param attn_scores:
