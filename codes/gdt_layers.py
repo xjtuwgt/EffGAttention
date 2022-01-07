@@ -35,7 +35,9 @@ class GDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
+
+        self.attn_head = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
+        self.attn_tail = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
 
         self.in_feat_drop = nn.Dropout(in_feat_drop)
         self.feat_drop = nn.Dropout(feat_drop)
@@ -92,11 +94,19 @@ class GDTLayer(nn.Module):
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
             ##++++++++++++++++++++
-            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, out_dim)
-            graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
-            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            eh = (feat_head * self.attn_head).sum(dim=-1).unsqueeze(-1)
+            et = (feat_tail * self.attn_tail).sum(dim=-1).unsqueeze(-1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'ft': feat_head, 'eh': eh})
+            graph.dstdata.update({'et': et})
+            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e'))
+
+            # graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, out_dim)
+            # graph.dstdata.update({'et': feat_tail})
+            # graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            # e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, out_dim)
+            # e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # graph.edata.update({'e': e})
             # graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             # e = graph.edata.pop('e')/self._head_dim
