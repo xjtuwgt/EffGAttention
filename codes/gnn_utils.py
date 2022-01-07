@@ -42,8 +42,8 @@ def relu_edge_normalization(graph: DGLHeteroGraph, attn_scores: Tensor):
 
     def edge_udf_attn_normalization_func(edges):
         attention_scores = edges.data['ta']
-        sum_attn_scores = edges.dst['attn_sum'] + 1e-6
-        norm_attends = attention_scores / sum_attn_scores
+        sum_attn_scores = edges.dst['attn_sum']
+        norm_attends = attention_scores / (sum_attn_scores + 1e-6)
         return {'norm_attn': norm_attends}
 
     with graph.local_scope():
