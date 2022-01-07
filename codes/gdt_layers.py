@@ -62,15 +62,6 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        """
-        Description
-        -----------
-        Reinitialize learnable parameters.
-        Note
-        ----
-        The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
-        The attention weights are using xavier initialization method.
-        """
         # gain = 1. / math.sqrt(self._out_feats)
         gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
