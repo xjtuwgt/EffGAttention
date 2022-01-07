@@ -200,7 +200,7 @@ if __name__ == '__main__':
                         help="number of hidden attention heads")
     parser.add_argument("--num-out-heads", type=int, default=1,
                         help="number of output attention heads")
-    parser.add_argument("--num-layers", type=int, default=5,
+    parser.add_argument("--num-layers", type=int, default=32,
                         help="number of hidden layers")
     parser.add_argument("--num-hidden", type=int, default=8,
                         help="number of hidden units")
