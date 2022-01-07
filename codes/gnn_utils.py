@@ -46,7 +46,7 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
         edge_attention_score = nodes.mailbox['m_a']
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
         if neighbor_num <= k:
-            ret_a = torch.empty(batch_size, head_num, 1).fill_(edge_attention_score.min())
+            ret_a = torch.empty(batch_size, head_num, 1).fill_(edge_attention_score.min()).to(attn_scores.device)
             ret_a_sum = edge_attention_score.sum(dim=1)
         else:
             top_k_values, _ = torch.topk(edge_attention_score, k=k, dim=1)
