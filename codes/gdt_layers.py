@@ -83,7 +83,8 @@ class GDTLayer(nn.Module):
         # if isinstance(self.res_fc, nn.Linear):
         #     nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
-        gain = 1. / math.sqrt(self._out_feats)
+        # gain = 1. / math.sqrt(self._out_feats)
+        gain = nn.init.calculate_gain('relu')
         nn.init.xavier_uniform_(self.fc_head.weight, gain=gain)
         nn.init.xavier_uniform_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_uniform_(self.fc_ent.weight, gain=gain)
