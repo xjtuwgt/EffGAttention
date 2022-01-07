@@ -8,9 +8,20 @@ class GDTEncoder(nn.Module):
         super(GDTEncoder, self).__init__()
         self.config = config
         self.graph_encoder = nn.ModuleList()
-        self.feature_mapper = nn.Linear(in_features=self.config.node_emb_dim, out_features=self.config.hidden_dim,
-                                        bias=False)
-        for _ in range(self.config.layers):
+        self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
+                                                  out_ent_feats=self.config.hidden_dim,
+                                                  num_heads=self.config.head_num,
+                                                  hop_num=self.config.gnn_hop_num,
+                                                  alpha=self.config.alpha,
+                                                  top_k=self.config.top_k,
+                                                  top_p=self.config.top_p,
+                                                  sparse_mode=self.config.sparse_mode,
+                                                  feat_drop=self.config.feat_drop,
+                                                  attn_drop=self.config.attn_drop,
+                                                  residual=self.config.residual,
+                                                  ppr_diff=self.config.ppr_diff))
+
+        for _ in range(1, self.config.layers):
             self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.hidden_dim,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
@@ -29,11 +40,10 @@ class GDTEncoder(nn.Module):
 
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.feature_mapper.weight, gain=gain)
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def forward(self, graph, inputs: Tensor):
-        h = self.feature_mapper(inputs)
+        h = inputs
         for l in range(self.config.layers):
             h = self.graph_encoder[l](graph, h)
         logits = self.classifier(h)
