@@ -44,7 +44,7 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
             t0 = time.time()
         # forward
         logits = model(g, features)
-        train_mask = label_mask_drop(train_mask=train_mask_backup, drop_ratio=0.1)
+        # train_mask = label_mask_drop(train_mask=train_mask_backup, drop_ratio=0.1)
         loss = loss_fcn(logits[train_mask], labels[train_mask])
         optimizer.zero_grad()
         loss.backward()
