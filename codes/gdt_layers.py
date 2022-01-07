@@ -74,8 +74,8 @@ class GDTLayer(nn.Module):
         The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
         The attention weights are using xavier initialization method.
         """
-        gain = nn.init.calculate_gain('relu')
-        # gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
+        # gain = nn.init.calculate_gain('relu')
+        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
