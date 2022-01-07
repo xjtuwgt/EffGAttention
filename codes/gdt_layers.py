@@ -113,12 +113,12 @@ class GDTLayer(nn.Module):
                 a = edge_softmax(graph, e)
                 a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a, k=self._top_k, p=self._top_p,
                                                      sparse_mode=self.sparse_mode)
-                a = top_kp_attn_normalization(graph=graph, attn_scores=a, attn_mask=a_mask, top_k_sum=a_top_sum)
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a, attn_mask=a_mask, top_k_sum=a_top_sum)
                 if self.ppr_diff:
-                    graph.edata['a'] = a
+                    graph.edata['a'] = a_n
                     rst = self.ppr_estimation(graph=graph)
                 else:
-                    graph.edata['a'] = self.attn_drop(a)
+                    graph.edata['a'] = self.attn_drop(a_n)
                     graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                     rst = graph.dstdata.pop('ft')
             else:
