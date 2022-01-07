@@ -112,10 +112,10 @@ class GDTLayer(nn.Module):
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
-                if not isinstance(self.res_fc_ent, Identity):
-                    resval = self.res_fc_ent(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
+                if not isinstance(self.res_fc, Identity):
+                    resval = self.res_fc(self.feat_drop(feat)).view(feat.shape[0], -1, self._head_dim)
                 else:
-                    resval = self.res_fc_ent(feat).view(feat.shape[0], -1, self._head_dim)
+                    resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
                 rst = self.feat_drop(rst) + resval
 
             rst = rst.flatten(1)
