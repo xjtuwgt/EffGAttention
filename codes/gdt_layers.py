@@ -110,7 +110,7 @@ class GDTLayer(nn.Module):
             e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
-                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=e, k=self.top_k, p=self.top_p,
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=e, k=self._top_k, p=self._top_p,
                                                      sparse_mode=self.sparse_mode)
                 e = top_kp_attn_normalization(graph=graph, attn_scores=e, attn_mask=a_mask, top_k_sum=a_top_sum)
             # compute softmax
