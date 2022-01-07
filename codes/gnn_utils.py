@@ -44,6 +44,8 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
 
     def top_k_reduce_func(nodes):
         edge_attention_score = nodes.mailbox['m_a']
+        # print(edge_attention_score.shape)
+        # print(edge_attention_score[0].squeeze(-1)[:,0].sum(), edge_attention_score[0].squeeze(-1)[:,0])
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
         if neighbor_num <= k:
             ret_a = torch.empty(batch_size, head_num, 1).fill_(edge_attention_score.min()).to(attn_scores.device)
@@ -52,6 +54,7 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
             top_k_values, _ = torch.topk(edge_attention_score, k=k, dim=1)
             ret_a = top_k_values[:, -1, :, :]
             ret_a_sum = top_k_values.sum(dim=1)
+        # print(ret_a_sum[0].squeeze(-1))
         return {'top_a': ret_a, 'top_as': ret_a_sum}
 
     with graph.local_scope():
@@ -93,6 +96,7 @@ def top_p_attention(graph: DGLHeteroGraph, attn_scores: Tensor, p: float = 0.75)
         cumulative_attends = cumulative_attends.squeeze(-1).transpose(1, 2).contiguous().view(batch_size * head_num,
                                                                                               neighbor_num)
         ret_a_sum = cumulative_attends[row_arrange_idx, top_p_score_idx].view(batch_size, head_num, 1)
+        print(ret_a_sum[0].squeeze(-1))
         return {'top_a': ret_a, 'top_as': ret_a_sum}
 
     with graph.local_scope():
