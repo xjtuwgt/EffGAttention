@@ -123,7 +123,7 @@ class GDTLayer(nn.Module):
                 rst = graph.dstdata.pop('ft')
             # residual
             if self.res_fc is not None:
-                resval = self.res_fc(in_dst).view(in_dst.shape[0], -1, self._head_dim)
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
                 rst = self.feat_drop(rst) + resval
 
             rst = rst.flatten(1)
