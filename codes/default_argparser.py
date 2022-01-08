@@ -86,7 +86,7 @@ def default_parser():
     parser.add_argument('--num_classes', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--feat_drop', type=float, default=0.25)
-    parser.add_argument('--attn_drop', type=float, default=0.2)
+    parser.add_argument('--attn_drop', type=float, default=0.25)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
     parser.add_argument('--stanford', type=boolean_string, default='false')
@@ -99,7 +99,7 @@ def default_parser():
     parser.add_argument('--hidden_dim', type=int, default=32)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=2)
-    parser.add_argument('--negative_slope', type=float, default=0.25)
+    parser.add_argument('--negative_slope', type=float, default=0.2)
     parser.add_argument('--top_p', type=float, default=0.75)
     parser.add_argument('--top_k', type=int, default=8)
     parser.add_argument('--sparse_mode', type=str, default='no_sparse', choices=['top_k', 'top_p', 'no_sparse'])
