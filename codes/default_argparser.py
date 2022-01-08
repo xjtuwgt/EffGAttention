@@ -93,7 +93,7 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--central_emb', type=boolean_string, default='true')
     parser.add_argument('--max_degree', type=int, default=200)
-    parser.add_argument('--degree_emb_dim', type=int, default=512)
+    parser.add_argument('--degree_emb_dim', type=int, default=768)
     parser.add_argument('--gnn_hop_num', type=int, default=6)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--hidden_dim', type=int, default=64)
@@ -119,7 +119,7 @@ def default_parser():
                         help="Total number of training epochs to perform.")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
-    parser.add_argument("--learning_rate", default=0.002, type=float,
+    parser.add_argument("--learning_rate", default=0.0005, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--weight_decay", default=5e-4, type=float,
                         help="Weight deay if we apply some.")
