@@ -204,9 +204,8 @@ class EmbeddingLayer(nn.Module):
     def init(self):
         """Initializing the embeddings.
         """
-        emb_init = small_init_gain_v2(d_in=self.dim, d_out=self.dim)
-        INIT.xavier_normal_(self.embedding.weight, emb_init)
-        gain = INIT.calculate_gain('relu')
+        gain = small_init_gain_v2(d_in=self.dim, d_out=self.dim)
+        INIT.xavier_normal_(self.embedding.weight, gain)
         if isinstance(self.projection, nn.Linear):
             INIT.xavier_normal_(self.projection.weight, gain=gain)
 

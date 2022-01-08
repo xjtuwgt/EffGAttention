@@ -10,7 +10,7 @@ class GDTEncoder(nn.Module):
         self.config = config
         if self.config.central_emb:
             if self.config.degree_emb_dim == self.config.node_emb_dim:
-                self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.node_emb_dim)
+                self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.degree_emb_dim)
             else:
                 self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.degree_emb_dim,
                                                         project_dim=self.config.node_emb_dim)
