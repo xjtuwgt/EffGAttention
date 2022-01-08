@@ -53,7 +53,7 @@ class GDTEncoder(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = small_init_gain_v2(d_in=self.config.hidden_dim, d_out=self.config.num_classes)
+        gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
         gain = small_init_gain_v2(d_in=self.config.node_emb_dim, d_out=self.config.degree_emb_dim)
         nn.init.xavier_normal_(self.feature_map.weight, gain=gain)
