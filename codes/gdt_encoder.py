@@ -19,6 +19,8 @@ class GDTEncoder(nn.Module):
             self.central_emb_layer = None
             self.feature_map = None
 
+        self.feat_drop = nn.Dropout(self.config.feat_drop)
+
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=input_dim,
                                                   out_ent_feats=self.config.hidden_dim,
@@ -61,7 +63,7 @@ class GDTEncoder(nn.Module):
 
     def forward(self, graph, inputs: Tensor):
         if self.central_emb_layer:
-            h = self.feature_map(inputs) + self.central_emb_layer(graph.in_degrees().long())
+            h = self.feature_map(self.feat_drop(inputs)) + self.central_emb_layer(graph.in_degrees().long())
         else:
             h = inputs
         for l in range(self.config.layers):
