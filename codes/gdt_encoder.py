@@ -56,7 +56,7 @@ class GDTEncoder(nn.Module):
 
     def forward(self, graph, inputs: Tensor):
         if self.central_emb_layer:
-            h = inputs + self.central_emb_layer(graph.in_degrees())
+            h = inputs + self.central_emb_layer(graph.in_degrees().long())
         else:
             h = inputs
         for l in range(self.config.layers):
