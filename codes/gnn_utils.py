@@ -1,3 +1,5 @@
+import math
+
 from dgl import DGLHeteroGraph
 import torch
 from torch import nn
@@ -168,10 +170,8 @@ class PositionwiseFeedForward(nn.Module):
         return self.w_2(self.dropout(F.relu(self.w_1(x))))
 
     def init(self):
-        # gain = nn.init.calculate_gain('relu')
-        gain = small_init_gain(d_in=self.model_dim, d_out=self.hidden_dim)
+        gain = 1.0 / math.sqrt(self.model_dim)
         nn.init.xavier_normal_(self.w_1.weight, gain=gain)
-        gain = small_init_gain(d_in=self.hidden_dim, d_out=self.model_dim)
         nn.init.xavier_normal_(self.w_2.weight, gain=gain)
 
 
