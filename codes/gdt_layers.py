@@ -55,7 +55,7 @@ class GDTLayer(nn.Module):
         else:
             self.register_buffer('res_fc', None)
 
-        self.graph_layer_norm = layerNorm(self._out_feats)
+        self.graph_layer_norm = layerNorm(self._in_ent_feats)
         self.ff_layer_norm = layerNorm(self._out_feats)
         self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
@@ -83,7 +83,7 @@ class GDTLayer(nn.Module):
                                'the issue. Setting ``allow_zero_in_degree`` '
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
-            in_head = in_dst = self.feat_drop(feat)
+            in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
             feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
@@ -128,11 +128,8 @@ class GDTLayer(nn.Module):
                 rst = self.feat_drop(rst) + resval
 
             rst = rst.flatten(1)
-            rst = self.graph_layer_norm(rst)
-
-            ff_rst = self.feed_forward_layer(self.feat_drop(rst))
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
-            rst = self.ff_layer_norm(rst)
 
             if get_attention:
                 return rst, graph.edata['a']
