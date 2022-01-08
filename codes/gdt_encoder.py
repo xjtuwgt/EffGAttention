@@ -56,7 +56,7 @@ class GDTEncoder(nn.Module):
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
-        gain = small_init_gain_v2(d_in=self.config.node_emb_dim, d_out=self.config.degree_emb_dim)
+        gain = small_init_gain_v2(d_in=self.config.degree_emb_dim, d_out=self.config.degree_emb_dim)
         nn.init.xavier_normal_(self.feature_map.weight, gain=gain)
 
     def forward(self, graph, inputs: Tensor):
