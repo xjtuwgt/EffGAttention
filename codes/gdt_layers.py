@@ -7,7 +7,7 @@ from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
-from codes.gnn_utils import PositionwiseFeedForward, small_init_gain_v2
+from codes.gnn_utils import PositionwiseFeedForward
 from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
 
 
@@ -64,10 +64,7 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        if self.layer_num <= 6:
-            gain = nn.init.calculate_gain('relu')
-        else:
-            gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
+        gain = math.sqrt(2.0/(self._in_ent_feats * self._out_feats)) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
