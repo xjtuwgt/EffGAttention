@@ -28,6 +28,7 @@ def citation_graph_reconstruction(dataset: str):
     n_relations = 2
     in_degrees = graph.in_degrees()
     assert in_degrees.min() >= 1
+    graph.ndata['log_in'] = torch.log(in_degrees.float())
     return graph, n_entities, n_relations, n_classes, n_feats
 
 
