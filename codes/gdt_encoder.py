@@ -53,8 +53,7 @@ class GDTEncoder(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.classifier.weight, gain=gain)
+        nn.init.xavier_normal_(self.classifier.weight, gain=0.02)
         if self.feature_map:
             nn.init.xavier_normal_(self.feature_map.weight, gain=0.02)
 
