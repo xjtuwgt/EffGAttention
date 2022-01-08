@@ -93,10 +93,10 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--central_emb', type=boolean_string, default='true')
     parser.add_argument('--max_degree', type=int, default=200)
-    parser.add_argument('--degree_emb_dim', type=int, default=1024)
+    parser.add_argument('--degree_emb_dim', type=int, default=2048)
     parser.add_argument('--gnn_hop_num', type=int, default=6)
     parser.add_argument('--alpha', type=float, default=0.1)
-    parser.add_argument('--hidden_dim', type=int, default=256)
+    parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=2)
     parser.add_argument('--negative_slope', type=float, default=0.25)
