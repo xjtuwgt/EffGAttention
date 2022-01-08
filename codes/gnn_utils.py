@@ -196,17 +196,15 @@ class EmbeddingLayer(nn.Module):
             self.projection = torch.nn.Linear(self.dim, self.proj_dim, bias=False)
         else:
             self.projection = Identity()
+        self.init()
 
     def init_with_tensor(self, data: Tensor, freeze=False):
         self.embedding = nn.Embedding.from_pretrained(embeddings=data, freeze=freeze)
 
-    def init(self, emb_init=0.1):
+    def init(self):
         """Initializing the embeddings.
-        Parameters
-        ----------
-        emb_init : float
-            The intial embedding range should be [-emb_init, emb_init].
         """
+        emb_init = small_init_gain_v2(d_in=self.dim, d_out=self.dim)
         INIT.xavier_normal_(self.embedding.weight, emb_init)
         gain = INIT.calculate_gain('relu')
         if isinstance(self.projection, nn.Linear):

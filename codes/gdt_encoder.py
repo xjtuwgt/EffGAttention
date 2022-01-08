@@ -1,12 +1,22 @@
 from codes.gdt_layers import GDTLayer
 from torch import nn
 from torch import Tensor
+from codes.gnn_utils import EmbeddingLayer
 
 
 class GDTEncoder(nn.Module):
     def __init__(self, config):
         super(GDTEncoder, self).__init__()
         self.config = config
+        if self.config.central_emb:
+            if self.config.degree_emb_dim == self.config.node_emb_dim:
+                self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.degree_emb_dim)
+            else:
+                self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.degree_emb_dim,
+                                                        project_dim=self.config.node_emb_dim)
+        else:
+            self.central_emb_layer = None
+
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
                                                   out_ent_feats=self.config.hidden_dim,
