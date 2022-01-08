@@ -93,7 +93,7 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--central_emb', type=boolean_string, default='true')
     parser.add_argument('--max_degree', type=int, default=200)
-    parser.add_argument('--degree_emb_dim', type=int, default=64)
+    parser.add_argument('--degree_emb_dim', type=int, default=512)
     parser.add_argument('--gnn_hop_num', type=int, default=6)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--hidden_dim', type=int, default=64)
