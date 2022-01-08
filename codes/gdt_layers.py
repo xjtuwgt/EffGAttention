@@ -64,7 +64,7 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        if self.layer_num <= 6:
+        if self.layer_num <= 3:
             gain = nn.init.calculate_gain('relu')
         else:
             gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
