@@ -56,7 +56,8 @@ class GDTEncoder(nn.Module):
         gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
         if self.feature_map:
-            nn.init.xavier_normal_(self.feature_map.weight, gain=0.01)
+            nn.init.xavier_normal_(self.feature_map.weight, gain=small_init_gain_v2(d_in=self.config.node_emb_dim,
+                                                                                    d_out=self.config.degree_emb_dim))
 
     def forward(self, graph, inputs: Tensor):
         if self.central_emb_layer:
