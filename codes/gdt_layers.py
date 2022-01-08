@@ -7,7 +7,7 @@ from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
-from codes.gnn_utils import PositionwiseFeedForward, small_init_gain
+from codes.gnn_utils import PositionwiseFeedForward, small_init_gain_v2
 from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
 
 
@@ -24,6 +24,7 @@ class GDTLayer(nn.Module):
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  negative_slope: float = 0.2,
+                 layer_num: int = 1,
                  residual=True,
                  ppr_diff=True):
         super(GDTLayer, self).__init__()
@@ -31,6 +32,7 @@ class GDTLayer(nn.Module):
         self.sparse_mode = sparse_mode
         self._top_k, self._top_p = top_k, top_p
         assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
+        self.layer_num = layer_num
 
         self._hop_num = hop_num
         self._alpha = alpha
@@ -62,8 +64,7 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = 1. / math.sqrt(self._out_feats)
-        # gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats)
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
