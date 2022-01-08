@@ -4,7 +4,8 @@ import torch.nn as nn
 from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
-from torch.nn import LayerNorm as layerNorm
+# from torch.nn import LayerNorm as layerNorm
+from codes.gnn_utils import RMSNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionwiseFeedForward, small_init_gain
