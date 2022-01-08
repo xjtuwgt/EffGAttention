@@ -55,7 +55,10 @@ class GDTEncoder(nn.Module):
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def forward(self, graph, inputs: Tensor):
-        h = inputs
+        if self.central_emb_layer:
+            h = inputs + self.central_emb_layer(graph.in_degrees())
+        else:
+            h = inputs
         for l in range(self.config.layers):
             h = self.graph_encoder[l](graph, h)
         logits = self.classifier(h)
