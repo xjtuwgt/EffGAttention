@@ -86,14 +86,14 @@ def default_parser():
     parser.add_argument('--num_classes', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--feat_drop', type=float, default=0.25)
-    parser.add_argument('--attn_drop', type=float, default=0.3)
+    parser.add_argument('--attn_drop', type=float, default=0.35)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
     parser.add_argument('--stanford', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--central_emb', type=boolean_string, default='true')
     parser.add_argument('--max_degree', type=int, default=200)
-    parser.add_argument('--degree_emb_dim', type=int, default=2048)
+    parser.add_argument('--degree_emb_dim', type=int, default=512)
     parser.add_argument('--gnn_hop_num', type=int, default=6)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--hidden_dim', type=int, default=64)
