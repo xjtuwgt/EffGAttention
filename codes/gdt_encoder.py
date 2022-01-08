@@ -1,3 +1,5 @@
+import math
+
 from codes.gdt_layers import GDTLayer
 from torch import nn
 from torch import Tensor
@@ -16,6 +18,8 @@ class GDTEncoder(nn.Module):
                                                         project_dim=self.config.node_emb_dim)
         else:
             self.central_emb_layer = None
+
+        self.feature_map = nn.Linear(in_features=self.config.node_emb_dim, out_features=self.config.node_emb_dim)
 
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
@@ -53,10 +57,11 @@ class GDTEncoder(nn.Module):
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
+        nn.init.xavier_normal_(self.feature_map.weight, gain=1.0/math.sqrt(self.config.node_emb_dim))
 
     def forward(self, graph, inputs: Tensor):
         if self.central_emb_layer:
-            h = inputs + self.central_emb_layer(graph.in_degrees().long())
+            h = self.feature_map(inputs) + self.central_emb_layer(graph.in_degrees().long())
         else:
             h = inputs
         for l in range(self.config.layers):
