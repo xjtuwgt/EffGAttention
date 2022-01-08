@@ -3,7 +3,7 @@ import math
 from codes.gdt_layers import GDTLayer
 from torch import nn
 from torch import Tensor
-from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
+from codes.gnn_utils import EmbeddingLayer, small_init_gain
 
 
 class GDTEncoder(nn.Module):
@@ -11,8 +11,7 @@ class GDTEncoder(nn.Module):
         super(GDTEncoder, self).__init__()
         self.config = config
         if self.config.central_emb:
-            self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree,
-                                                    dim=self.config.degree_emb_dim)
+            self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.degree_emb_dim)
             self.feature_map = nn.Linear(in_features=self.config.node_emb_dim, out_features=self.config.degree_emb_dim)
             input_dim = self.config.degree_emb_dim
         else:
@@ -56,7 +55,7 @@ class GDTEncoder(nn.Module):
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
-        gain = small_init_gain_v2(d_in=self.config.degree_emb_dim, d_out=self.config.degree_emb_dim)
+        gain = small_init_gain(d_in=self.config.degree_emb_dim, d_out=self.config.degree_emb_dim)
         nn.init.xavier_normal_(self.feature_map.weight, gain=gain)
 
     def forward(self, graph, inputs: Tensor):
