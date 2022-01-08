@@ -64,7 +64,10 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
+        if self.layer_num <= 6:
+            gain = 0.02
+        else:
+            gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
