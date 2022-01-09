@@ -85,7 +85,7 @@ def default_parser():
     parser.add_argument('--node_emb_dim', type=int, default=300)
     parser.add_argument('--num_classes', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--feat_drop', type=float, default=0.25)
+    parser.add_argument('--feat_drop', type=float, default=0.35)
     parser.add_argument('--attn_drop', type=float, default=0.35)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
@@ -95,7 +95,7 @@ def default_parser():
     parser.add_argument('--max_degree', type=int, default=200)
     parser.add_argument('--degree_emb_dim', type=int, default=768)
     parser.add_argument('--gnn_hop_num', type=int, default=6)
-    parser.add_argument('--alpha', type=float, default=0.1)
+    parser.add_argument('--alpha', type=float, default=0.15)
     parser.add_argument('--hidden_dim', type=int, default=512)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=3)
