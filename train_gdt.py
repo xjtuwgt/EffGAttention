@@ -2,15 +2,17 @@ import numpy as np
 import time
 import torch
 from codes.gdt_encoder import GDTEncoder
-from torch.optim import AdamW
+from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
+
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
                     level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 def accuracy(logits, labels, debug=False):
     _, indices = torch.max(logits, dim=1)
@@ -75,9 +77,9 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
                 break
 
         logger.info("Epoch {:04d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
-              " ValAcc {:.4f} | B/ValAcc {:.4f} | B/TestAcc {:.4f} | ETputs (KTEPS) {:.2f}".
-              format(epoch, np.mean(dur), loss.item(), train_acc,
-                     val_acc, best_val_acc, best_test_acc, n_edges / np.mean(dur) / 1000))
+                    " ValAcc {:.4f} | B/ValAcc {:.4f} | B/TestAcc {:.4f} | ETputs (KTEPS) {:.2f}".
+                    format(epoch, np.mean(dur), loss.item(), train_acc,
+                           val_acc, best_val_acc, best_test_acc, n_edges / np.mean(dur) / 1000))
 
     logger.info('\n')
     test_acc, test_predictions, test_true_labels = evaluate(g, model, features, labels, test_mask, debug=True)
@@ -130,7 +132,7 @@ def main(args):
     # if cuda:
     #     model.cuda()
     # use optimizer
-    optimizer = AdamW(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                 num_training_steps=args.num_train_epochs)
     model_train(g=g, model=model, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, features=features,
