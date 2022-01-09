@@ -206,7 +206,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--dataset",
         type=str,
-        default='citeseer',
+        default='cora',
         help=
         "The input dataset. Can be cora, citeseer, pubmed, syn(synthetic dataset) or reddit"
     )
@@ -218,15 +218,15 @@ if __name__ == '__main__':
                         help="number of hidden attention heads")
     parser.add_argument("--num-out-heads", type=int, default=1,
                         help="number of output attention heads")
-    parser.add_argument("--num-layers", type=int, default=32,
+    parser.add_argument("--num-layers", type=int, default=1,
                         help="number of hidden layers")
     parser.add_argument("--num-hidden", type=int, default=8,
                         help="number of hidden units")
     parser.add_argument("--residual", action="store_true", default=False,
                         help="use residual connection")
-    parser.add_argument("--in-drop", type=float, default=.25,
+    parser.add_argument("--in-drop", type=float, default=.5,
                         help="input feature dropout")
-    parser.add_argument("--attn-drop", type=float, default=.25,
+    parser.add_argument("--attn-drop", type=float, default=.5,
                         help="attention dropout")
     parser.add_argument("--lr", type=float, default=0.005,
                         help="learning rate")
