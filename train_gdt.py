@@ -133,9 +133,9 @@ def main(args):
     #     model.cuda()
     # use optimizer
 
-    feat_drop_ratio_list = np.arange(0.2, 0.7, 0.05).tolist()
-    attn_drop_ratio_list = np.arange(0.2, 0.7, 0.05).tolist()
-    lr_ratio_list = [2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3]
+    feat_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
+    attn_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
+    lr_ratio_list = [5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3]
 
     acc_list = []
     search_best_test_acc = 0.0
