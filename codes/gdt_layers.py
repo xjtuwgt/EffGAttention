@@ -48,7 +48,7 @@ class GDTLayer(nn.Module):
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
-        self.attn_activation = nn.PReLU(init=negative_slope)
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
         if residual:
             if self._in_tail_feats != self._out_feats:
                 self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
