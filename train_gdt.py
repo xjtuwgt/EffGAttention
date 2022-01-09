@@ -81,8 +81,9 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
 
     logger.info('\n')
     test_acc, test_predictions, test_true_labels = evaluate(g, model, features, labels, test_mask, debug=True)
-    logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc, best_val_acc,
-                                                                                           best_test_acc))
+    logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc,
+                                                                                                 best_val_acc,
+                                                                                                 best_test_acc))
     return
 
 
