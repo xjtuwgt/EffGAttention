@@ -70,8 +70,7 @@ class GDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
-        gain = 1.0 / math.sqrt(self._out_feats)
-        nn.init.xavier_normal_(self.attn, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=0.02)
 
     def forward(self, graph, feat, get_attention=False):
         with graph.local_scope():
