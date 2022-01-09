@@ -93,6 +93,7 @@ class GDTLayer(nn.Module):
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
             e = e.sum(dim=-1).unsqueeze(dim=2) / math.sqrt(self._head_dim)
             e = self.attn_activation(e)
