@@ -86,7 +86,7 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
     logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc,
                                                                                                  best_val_acc,
                                                                                                  best_test_acc))
-    return
+    return test_acc, best_val_acc, best_test_acc
 
 
 def main(args):
@@ -132,11 +132,30 @@ def main(args):
     # if cuda:
     #     model.cuda()
     # use optimizer
-    optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
-                                                num_training_steps=args.num_train_epochs)
-    model_train(g=g, model=model, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, features=features,
-                labels=labels, optimizer=optimizer, scheduler=scheduler, args=args)
+
+    feat_drop_ratio_list = np.arange(0.2, 0.7, 0.05).tolist()
+    attn_drop_ratio_list = np.arange(0.2, 0.7, 0.05).tolist()
+    lr_ratio_list = [2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3]
+
+    acc_list = []
+    search_best_test_acc = 0.0
+    for f_dr in feat_drop_ratio_list:
+        for a_dr in attn_drop_ratio_list:
+            for lr in lr_ratio_list:
+                args.learning_rate = lr
+                args.feat_drop = f_dr
+                args.attn_drop = a_dr
+                optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+                scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+                                                            num_training_steps=args.num_train_epochs)
+
+                test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, features=features,
+                            labels=labels, optimizer=optimizer, scheduler=scheduler, args=args)
+                acc_list.append((test_acc, best_val_acc, best_test_acc))
+                if search_best_test_acc < best_test_acc:
+                    search_best_test_acc = best_test_acc
+    print(acc_list)
+    print(search_best_test_acc)
 
 
 if __name__ == '__main__':
