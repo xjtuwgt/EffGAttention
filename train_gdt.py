@@ -96,15 +96,7 @@ def main(args):
     print(special_relation_dict)
     args.num_classes = n_classes
     args.node_emb_dim = g.ndata['feat'].shape[1]
-
-    # if args.gpu < 0:
-    #     cuda = False
-    # else:
-    #     cuda = True
-    #     g = g.int().to(args.gpu)
-
     g = g.int().to(args.device)
-
     features = g.ndata['feat']
     labels = g.ndata['label']
     train_mask = g.ndata['train_mask']
@@ -122,17 +114,6 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    # add self loop
-    # g = dgl.remove_self_loop(g)
-    # g = dgl.add_self_loop(g)
-    # create model
-    model = GDTEncoder(config=args)
-    model.to(args.device)
-    print(model)
-    # if cuda:
-    #     model.cuda()
-    # use optimizer
-
     feat_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
     lr_ratio_list = [2e-4, 5e-4, 1e-3, 2e-3]
@@ -145,6 +126,10 @@ def main(args):
                 args.learning_rate = lr
                 args.feat_drop = f_dr
                 args.attn_drop = a_dr
+                # create model
+                model = GDTEncoder(config=args)
+                model.to(args.device)
+                print(model)
                 optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
                 scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                             num_training_steps=args.num_train_epochs)
