@@ -85,7 +85,7 @@ def default_parser():
     parser.add_argument('--node_emb_dim', type=int, default=300)
     parser.add_argument('--num_classes', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--feat_drop', type=float, default=0.5)
+    parser.add_argument('--feat_drop', type=float, default=0.4)
     parser.add_argument('--attn_drop', type=float, default=0.35)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
