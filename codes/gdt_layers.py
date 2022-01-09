@@ -94,7 +94,7 @@ class GDTLayer(nn.Module):
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
             e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
-            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)/math.sqrt(self._head_dim)  # (num_edge, num_heads, 1)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
