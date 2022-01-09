@@ -152,6 +152,9 @@ def main(args):
                 test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, features=features,
                             labels=labels, optimizer=optimizer, scheduler=scheduler, args=args)
                 acc_list.append((test_acc, best_val_acc, best_test_acc))
+                logger.info('*' * 50)
+                logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                logger.info('*' * 50)
                 if search_best_test_acc < best_test_acc:
                     search_best_test_acc = best_test_acc
     print(acc_list)
