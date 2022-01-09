@@ -134,8 +134,11 @@ def main(args):
                 scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                             num_training_steps=args.num_train_epochs)
 
-                test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, features=features,
-                            labels=labels, optimizer=optimizer, scheduler=scheduler, args=args)
+                test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+                                                                    val_mask=val_mask, test_mask=test_mask,
+                                                                    features=features, labels=labels,
+                                                                    optimizer=optimizer, scheduler=scheduler,
+                                                                    args=args)
                 acc_list.append((test_acc, best_val_acc, best_test_acc))
                 logger.info('*' * 50)
                 logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
