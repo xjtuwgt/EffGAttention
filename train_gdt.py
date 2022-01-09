@@ -130,7 +130,7 @@ def main(args):
     #     model.cuda()
     # use optimizer
     optimizer = AdamW(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=50,
+    scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                 num_training_steps=args.num_train_epochs)
     model_train(g=g, model=model, train_mask=train_mask, val_mask=val_mask, test_mask=test_mask, features=features,
                 labels=labels, optimizer=optimizer, scheduler=scheduler, args=args)
