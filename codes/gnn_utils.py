@@ -145,8 +145,6 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
         graph.apply_edges(fn.e_div_v('ta', 'attn_sum', 'norm_attn'))
         norm_attentions = graph.edata.pop('norm_attn')
         return norm_attentions
-
-
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
