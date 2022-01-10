@@ -49,10 +49,10 @@ class GatedGDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
+        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
 
-        self.gated_head = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
-        self.gated_tail = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
+        self.gated_head = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
+        self.gated_tail = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
