@@ -155,8 +155,12 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
         return norm_attentions
 
 
+# +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 class PositionWiseFeedForward(nn.Module):
     "Implements FFN equation."
+
     def __init__(self, model_dim, d_hidden, layer_num=1, dropout=0.1):
         super(PositionWiseFeedForward, self).__init__()
         self.model_dim = model_dim
@@ -171,9 +175,9 @@ class PositionWiseFeedForward(nn.Module):
         return self.w_2(self.dropout(F.relu(self.w_1(x))))
 
     def init(self):
-        gain = small_init_gain_v2(d_in=self.model_dim, d_out=self.hidden_dim)/math.sqrt(self.layer_num)
+        gain = small_init_gain_v2(d_in=self.model_dim, d_out=self.hidden_dim) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.w_1.weight, gain=gain)
-        gain = small_init_gain_v2(d_in=self.hidden_dim, d_out=self.model_dim)/math.sqrt(self.layer_num)
+        gain = small_init_gain_v2(d_in=self.hidden_dim, d_out=self.model_dim) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.w_2.weight, gain=gain)
 
 
@@ -182,7 +186,7 @@ def small_init_gain(d_in, d_out):
 
 
 def small_init_gain_v2(d_in, d_out):
-    return math.sqrt(6.0/(d_in + d_out))
+    return math.sqrt(6.0 / (d_in + d_out))
 
 
 class EmbeddingLayer(nn.Module):
@@ -261,18 +265,17 @@ class RMSNorm(nn.Module):
 
         return self.scale * x_normed
 
-# class NeighborSelfAttention(nn.Module):
+
+# class NeighborInteractionLayer(nn.Module):
 #     def __init__(self, head_num, d_model, dropout=0.1):
 #         "Take in model size and number of heads."
-#         super(NeighborSelfAttention, self).__init__()
+#         super(NeighborInteractionLayer, self).__init__()
 #         assert d_model % head_num == 0
 #         self._head_dim = d_model // head_num
 #         self._head_hum = head_num
 #         self.dropout = nn.Dropout(p=dropout)
 #
-#
 #     def forward(self, graph: DGLHeteroGraph, inp_feat: Tensor):
-#
 #         return
 #
 #     def other(self, query, key, value, mask=None):
