@@ -2,6 +2,8 @@ import math
 
 from dgl import DGLHeteroGraph
 import torch
+import dgl
+import dgl.function as fn
 from torch import nn
 import torch.nn.functional as F
 import torch.nn.init as INIT
