@@ -111,10 +111,7 @@ class GatedGDTEncoder(nn.Module):
                                                            attn_drop=self.config.attn_drop,
                                                            residual=self.config.residual,
                                                            ppr_diff=self.config.ppr_diff))
-        if self.config.layers >= 6:
-            self.layer_norm = LayerNorm(self.config.hidden_dim)
-        else:
-            self.layer_norm = Identity()
+        self.layer_norm = LayerNorm(self.config.hidden_dim)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
