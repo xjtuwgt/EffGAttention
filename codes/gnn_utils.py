@@ -70,6 +70,7 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
         edge_attention_score = nodes.mailbox['m_a']
         # print(edge_attention_score.shape)
         # print(edge_attention_score[0].squeeze(-1)[:,0].sum(), edge_attention_score[0].squeeze(-1)[:,0])
+        # print(edge_attention_score.sum(1))
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
         if neighbor_num <= k:
             ret_a = torch.empty(batch_size, head_num, 1).fill_(edge_attention_score.min()).to(attn_scores.device)
@@ -78,7 +79,6 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
             top_k_values, _ = torch.topk(edge_attention_score, k=k, dim=1)
             ret_a = top_k_values[:, -1, :, :]
             ret_a_sum = top_k_values.sum(dim=1)
-        # print(ret_a_sum[0].squeeze(-1))
         return {'top_a': ret_a, 'top_as': ret_a_sum}
 
     with graph.local_scope():
@@ -142,17 +142,17 @@ def top_kp_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5, p: 
 
 
 def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_mask: Tensor, top_k_sum: Tensor):
-    def edge_udf_attn_normalization_func(edges):
-        attention_scores = edges.data['ta']
-        sum_attn_scores = edges.dst['attn_sum']
-        norm_attends = attention_scores / sum_attn_scores
-        return {'norm_attn': norm_attends}
+    # def edge_udf_attn_normalization_func(edges):
+    #     attention_scores = edges.data['ta']
+    #     sum_attn_scores = edges.dst['attn_sum']
+    #     norm_attends = attention_scores / sum_attn_scores
+    #     return {'norm_attn': norm_attends}
 
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
         graph.edata['ta'][~attn_mask] = 0.0
         graph.dstdata['attn_sum'] = top_k_sum
-        graph.apply_edges(edge_udf_attn_normalization_func)
+        graph.apply_edges(fn.e_div_v('ta', 'attn_sum', 'norm_attn'))
         norm_attentions = graph.edata.pop('norm_attn')
         return norm_attentions
 
@@ -162,7 +162,6 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
 
 class PositionWiseFeedForward(nn.Module):
     "Implements FFN equation."
-
     def __init__(self, model_dim, d_hidden, layer_num=1, dropout=0.1):
         super(PositionWiseFeedForward, self).__init__()
         self.model_dim = model_dim
