@@ -114,7 +114,7 @@ def default_parser():
     parser.add_argument("--local_rank", type=int, default=-1, help="For distributed training: local_rank")
     parser.add_argument("--gpu", type=int, default=-1, help="which GPU to use. Set -1 to use CPU.")
     # learning and log ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--seed', type=int, default=45, help="random seed for initialization")
+    parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
     parser.add_argument("--num_train_epochs", default=300, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
