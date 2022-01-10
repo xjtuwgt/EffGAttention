@@ -108,8 +108,8 @@ class GatedGDTLayer(nn.Module):
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             attn_score = graph.edata.pop('e')
             # +++++++++++++++++++++++++++++gate_computation++++++++++++++++++++++++++++
-            gh = (feat_enti * self.gated_head).sum(dim=-1).unsqueeze(-1)
-            gt = (feat_enti * self.gated_tail).sum(dim=-1).unsqueeze(-1)
+            gh = (feat_head * self.gated_head).sum(dim=-1).unsqueeze(-1)
+            gt = (feat_tail * self.gated_tail).sum(dim=-1).unsqueeze(-1)
             graph.srcdata.update({'gh': gh})
             graph.dstdata.update({'gt': gt})
             graph.apply_edges(fn.u_add_v('gh', 'gt', 'g'))
