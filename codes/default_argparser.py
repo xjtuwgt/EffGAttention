@@ -103,7 +103,6 @@ def default_parser():
     parser.add_argument('--top_p', type=float, default=0.75)
     parser.add_argument('--top_k', type=int, default=8)
     parser.add_argument('--sparse_mode', type=str, default='no_sparse', choices=['top_k', 'top_p', 'no_sparse'])
-    parser.add_argument('--norm_mode', type=str, default='pre_norm', choices=['pre_norm', 'post_norm'])
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--eval_batch_size', type=int, default=32)
     parser.add_argument('--per_gpu_pretrain_batch_size', type=int, default=16)
