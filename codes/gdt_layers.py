@@ -252,8 +252,8 @@ class RGDTLayer(nn.Module):
             feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
-
             rel_emb = self.feat_drop(rel_feat)
+
             feat_rel = self.fc_rel(rel_emb).view(-1, self._num_heads, self._head_dim)
             eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
             et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)

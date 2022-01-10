@@ -191,9 +191,7 @@ class EmbeddingLayer(nn.Module):
         self.num = num
         self.dim = dim
         self.proj_dim = project_dim
-        self.emb_dropout = nn.Dropout(p=drop_ratio)
         self.embedding = nn.Embedding(num_embeddings=num, embedding_dim=dim)
-        self.emb_layer_norm = nn.LayerNorm(dim)
         if self.proj_dim is not None and self.proj_dim > 0:
             self.projection = torch.nn.Linear(self.dim, self.proj_dim, bias=False)
         else:
@@ -212,7 +210,7 @@ class EmbeddingLayer(nn.Module):
             INIT.xavier_normal_(self.projection.weight, gain=gain)
 
     def _embed(self, embeddings):
-        embeddings = self.projection(self.emb_dropout(self.emb_layer_norm(embeddings)))
+        embeddings = self.projection(embeddings)
         return embeddings
 
     def forward(self, indexes: LongTensor):
