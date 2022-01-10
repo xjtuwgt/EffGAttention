@@ -9,6 +9,7 @@ from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionwiseFeedForward, small_init_gain_v2
 from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
+from torch import Tensor
 
 
 class GDTLayer(nn.Module):
@@ -132,6 +133,151 @@ class GDTLayer(nn.Module):
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
 
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            for _ in range(self._hop_num):
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+            return feat
+
+
+class RGDTLayer(nn.Module):
+    def __init__(self,
+                 in_ent_feats: int,
+                 in_rel_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int,
+                 alpha: float = 0.15,
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 residual=True,
+                 activation=None,
+                 ppr_diff=True):
+        super(RGDTLayer, self).__init__()
+
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_ent_feats = out_ent_feats
+        self._in_rel_feats = in_rel_feats
+        self._num_heads = num_heads
+        self._hop_num = hop_num
+        self._alpha = alpha
+
+        assert self._out_ent_feats % self._num_heads == 0
+        self._head_dim = self._out_ent_feats // self._num_heads
+
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+
+        self.fc_rel = nn.Linear(self._in_rel_feats, self._num_heads * self._head_dim, bias=False)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+
+        self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_activation = nn.PReLU(init=negative_slope)  # for attention computation
+
+        if residual:
+            if in_ent_feats != out_ent_feats:
+                self.res_fc = nn.Linear(in_ent_feats, self._num_heads * self._head_dim, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc_ent', None)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        self.ff_layer_norm = layerNorm(self._out_ent_feats)
+        self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._num_heads * self._head_dim,
+                                                          d_hidden=4 * self._num_heads * self._head_dim)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.reset_parameters()
+        self.activation = activation
+        self.ppr_diff = ppr_diff
+
+    def reset_parameters(self):
+        """
+        Description
+        -----------
+        Reinitialize learnable parameters.
+        Note
+        ----
+        The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
+        The attention weights are using xavier initialization method.
+        """
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_ent_feats)/math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn_h, gain=gain)
+        nn.init.xavier_normal_(self.attn_t, gain=gain)
+        nn.init.xavier_normal_(self.attn_r, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               ' Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_head = in_dst = self.feat_drop(self.graph_layer_norm(ent_feat))
+            feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
+
+            rel_emb = self.feat_drop(rel_feat)
+            feat_rel = self.fc_rel(rel_emb).view(-1, self._num_heads, self._head_dim)
+            eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
+            et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
+            er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            edge_ids = graph.edata['rid']
+            er = er[edge_ids]
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'ft': feat_enti, 'eh': eh})
+            graph.dstdata.update({'et': et})
+            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e') + er)
+            if self.ppr_diff:
+                graph.edata['a'] = edge_softmax(graph, e)
+                rst = self.ppr_estimation(graph=graph)
+            else:
+                graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))
+                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                rst = graph.dstdata['ft']
+            # residual
+            if self.res_fc_ent is not None:
+                resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
+
+            rst = rst.flatten(1)
+            # +++++++++++++++++++++++++++++++++++++++
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = self.feat_drop(ff_rst) + rst  # residual
+            # +++++++++++++++++++++++++++++++++++++++
+            # activation
+            if self.activation:
+                rst = self.activation(rst)
+            # +++++++++++++++++++++++++++++++++++++++
             if get_attention:
                 return rst, graph.edata['a']
             else:

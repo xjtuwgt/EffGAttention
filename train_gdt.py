@@ -91,9 +91,9 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
 
 def main(args):
     args = complete_default_parser(args=args)
-    g, _, _, n_classes, _, special_relation_dict = \
+    g, _, n_relations, n_classes, _, special_relation_dict = \
         citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5, rand_split=False)
-    print(special_relation_dict)
+    logger.info("Number of relations = {}".format(n_relations))
     args.num_classes = n_classes
     args.node_emb_dim = g.ndata['feat'].shape[1]
     g = g.int().to(args.device)
@@ -103,7 +103,7 @@ def main(args):
     val_mask = g.ndata['val_mask']
     test_mask = g.ndata['test_mask']
     n_edges = g.number_of_edges()
-    print("""----Data statistics------'
+    logger.info("""----Data statistics------'
       #Edges %d
       #Classes %d
       #Train samples %d
