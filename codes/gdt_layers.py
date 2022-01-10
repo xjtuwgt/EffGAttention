@@ -7,7 +7,7 @@ from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
-from codes.gnn_utils import PositionwiseFeedForward, small_init_gain_v2
+from codes.gnn_utils import PositionWiseFeedForward, small_init_gain_v2
 from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
 from torch import Tensor
 
@@ -60,7 +60,7 @@ class GDTLayer(nn.Module):
 
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
         self.ff_layer_norm = layerNorm(self._out_feats)
-        self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
         self.reset_parameters()
 
@@ -214,7 +214,7 @@ class RGDTLayer(nn.Module):
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
         self.ff_layer_norm = layerNorm(self._out_ent_feats)
-        self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._num_heads * self._head_dim,
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.reset_parameters()
@@ -266,13 +266,27 @@ class RGDTLayer(nn.Module):
             graph.dstdata.update({'et': et})
             graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
             e = self.attn_activation(graph.edata.pop('e') + er)
-            if self.ppr_diff:
-                graph.edata['a'] = edge_softmax(graph, e)
-                rst = self.ppr_estimation(graph=graph)
+            if self.sparse_mode != 'no_sparse':
+                a_score = edge_softmax(graph, e)
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
+                                                     sparse_mode=self.sparse_mode)
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
+                                                top_k_sum=a_top_sum)
+                if self.ppr_diff:
+                    graph.edata['a'] = a_n
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(a_n)
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
             else:
-                graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))
-                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                rst = graph.dstdata['ft']
+                if self.ppr_diff:
+                    graph.edata['a'] = edge_softmax(graph, e)
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata['ft']
             # residual
             if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
