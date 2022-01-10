@@ -114,10 +114,10 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    feat_drop_ratio_list = np.arange(0.3, 0.7, 0.1).tolist()
-    attn_drop_ratio_list = np.arange(0.3, 0.7, 0.1).tolist()
-    lr_ratio_list = [2e-4, 5e-4, 1e-3, 2e-3]
-    top_kp_list = [4, 6, 8]
+    feat_drop_ratio_list = np.arange(0.3, 0.65, 0.05).tolist()
+    attn_drop_ratio_list = np.arange(0.3, 0.65, 0.1).tolist()
+    lr_ratio_list = [5e-4, 1e-3, 2e-3]
+    top_kp_list = [4]
 
     acc_list = []
     search_best_test_acc = 0.0
@@ -127,7 +127,7 @@ def main(args):
             for lr in lr_ratio_list:
                 for top_kp in top_kp_list:
                     args.top_k = top_kp
-                    args.sparse_mode = 'top_k'
+                    args.sparse_mode = 'no_sparse'
                     args.learning_rate = lr
                     args.feat_drop = f_dr
                     args.attn_drop = a_dr
