@@ -120,7 +120,7 @@ def default_parser():
     parser.add_argument("--gpu", type=int, default=-1, help="which GPU to use. Set -1 to use CPU.")
     # learning and log ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
-    parser.add_argument("--num_train_epochs", default=300, type=int,
+    parser.add_argument("--num_train_epochs", default=100, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
