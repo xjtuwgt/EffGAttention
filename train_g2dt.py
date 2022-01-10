@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import torch
-from codes.gdt_encoder import RGDTEncoder
+from codes.gdt_encoder import GatedGDTEncoder
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
@@ -22,16 +22,16 @@ def accuracy(logits, labels, debug=False):
     return correct.item() * 1.0 / len(labels)
 
 
-def evaluate(graph, model, labels, mask, debug=False):
+def evaluate(graph, features, model, labels, mask, debug=False):
     model.eval()
     with torch.no_grad():
-        logits = model(graph)
+        logits = model(graph, features)
         logits = logits[mask]
         labels = labels[mask]
         return accuracy(logits, labels, debug=debug)
 
 
-def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
+def model_train(g, model, features, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
     dur = []
     best_val_acc = 0.0
     best_test_acc = 0.0
@@ -46,7 +46,7 @@ def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, sc
         if epoch >= 3:
             t0 = time.time()
         # forward
-        logits = model(g)
+        logits = model(g, features)
         # train_mask = label_mask_drop(train_mask=train_mask_backup, drop_ratio=0.25)
         loss = loss_fcn(logits[train_mask], labels[train_mask])
         optimizer.zero_grad()
@@ -64,8 +64,8 @@ def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, sc
             val_acc = accuracy(logits[val_mask], labels[val_mask])
             test_acc = accuracy(logits[test_mask], labels[test_mask])
         else:
-            val_acc = evaluate(g, model, labels, val_mask)
-            test_acc = evaluate(g, model, labels, test_mask)
+            val_acc = evaluate(g, features, model, labels, val_mask)
+            test_acc = evaluate(g, features, model, labels, test_mask)
 
         if best_val_acc <= val_acc:
             best_val_acc = val_acc
@@ -82,7 +82,7 @@ def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, sc
                            val_acc, best_val_acc, best_test_acc, n_edges / np.mean(dur) / 1000))
 
     logger.info('\n')
-    test_acc, test_predictions, test_true_labels = evaluate(g, model, labels, test_mask, debug=True)
+    test_acc, test_predictions, test_true_labels = evaluate(g, features, model, labels, test_mask, debug=True)
     logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc,
                                                                                                  best_val_acc,
                                                                                                  best_test_acc))
@@ -116,15 +116,14 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    model = RGDTEncoder(config=args)
+    model = GatedGDTEncoder(config=args)
     model.to(args.device)
-    model.init_graph_ember(ent_emb=features, ent_freeze=True)
     print(model)
     optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                 num_training_steps=args.num_train_epochs)
 
-    test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+    test_acc, best_val_acc, best_test_acc = model_train(g=g, features=features, model=model, train_mask=train_mask,
                                                         val_mask=val_mask, test_mask=test_mask,
                                                         labels=labels,
                                                         optimizer=optimizer, scheduler=scheduler,
