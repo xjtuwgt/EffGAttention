@@ -163,13 +163,22 @@ class RGDTLayer(nn.Module):
                  out_ent_feats: int,
                  num_heads: int,
                  hop_num: int,
+                 top_k: int = 5,
+                 top_p: float = 0.75,
+                 sparse_mode: str = 'top_k',
                  alpha: float = 0.15,
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  negative_slope: float = 0.2,
+                 layer_num: int = 1,
                  residual=True,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
+
+        self.sparse_mode = sparse_mode
+        self._top_k, self._top_p = top_k, top_p
+        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
+        self.layer_num = layer_num
 
         self._in_ent_feats = in_ent_feats
         self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)

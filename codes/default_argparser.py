@@ -86,6 +86,7 @@ def default_parser():
     parser.add_argument('--num_classes', type=int, default=-1)
     parser.add_argument('--num_relations', type=int, default=2)
     parser.add_argument('--rel_emb_dim', type=int, default=300)
+    parser.add_argument('--proj_emb_dim', type=int, default=300)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--feat_drop', type=float, default=0.45)
     parser.add_argument('--attn_drop', type=float, default=0.35)
