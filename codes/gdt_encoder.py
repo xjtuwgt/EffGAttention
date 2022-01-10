@@ -119,7 +119,7 @@ class RGDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        if self.config.layers >= 6:
+        if self.config.layers >= 1:
             self.layer_norm = LayerNorm(self.config.hidden_dim)
         else:
             self.layer_norm = Identity()
