@@ -87,7 +87,8 @@ class GDTLayer(nn.Module):
                                'the issue. Setting ``allow_zero_in_degree`` '
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
-            in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
+            # in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
+            in_head = in_dst = self.feat_drop(feat)
             feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
