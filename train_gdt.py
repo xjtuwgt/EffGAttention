@@ -120,6 +120,7 @@ def main(args):
 
     acc_list = []
     search_best_test_acc = 0.0
+    search_best_settings = None
     for f_dr in feat_drop_ratio_list:
         for a_dr in attn_drop_ratio_list:
             for lr in lr_ratio_list:
@@ -139,14 +140,17 @@ def main(args):
                                                                     features=features, labels=labels,
                                                                     optimizer=optimizer, scheduler=scheduler,
                                                                     args=args)
-                acc_list.append((test_acc, best_val_acc, best_test_acc))
+                acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
                 logger.info('*' * 50)
                 logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
                 logger.info('*' * 50)
                 if search_best_test_acc < best_test_acc:
                     search_best_test_acc = best_test_acc
-    print(acc_list)
+                    search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+    for setting_acc in acc_list:
+        print(setting_acc)
     print(search_best_test_acc)
+    print(search_best_settings)
 
 
 if __name__ == '__main__':
