@@ -25,13 +25,15 @@ class GDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  negative_slope: float = 0.2,
                  layer_num: int = 1,
-                 residual=True,
-                 ppr_diff=True):
+                 pre_norm: bool = True,
+                 residual: bool = True,
+                 ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
 
         self.sparse_mode = sparse_mode
         self._top_k, self._top_p = top_k, top_p
         assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
+        self.pre_norm_mode = pre_norm
         self.layer_num = layer_num
 
         self._hop_num = hop_num
@@ -57,7 +59,10 @@ class GDTLayer(nn.Module):
         else:
             self.register_buffer('res_fc', None)
 
-        self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        if self.pre_norm_mode:
+            self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        else:
+            self.graph_layer_norm = layerNorm(self._out_feats)
         self.ff_layer_norm = layerNorm(self._out_feats)
         self.feed_forward_layer = PositionwiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
@@ -73,6 +78,12 @@ class GDTLayer(nn.Module):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
     def forward(self, graph, feat, get_attention=False):
+        if self.pre_norm_mode:
+            return self.pre_norm_forward(graph=graph, feat=feat, get_attention=get_attention)
+        else:
+            return self.pre_norm_forward(graph=graph, feat=feat, get_attention=get_attention)
+
+    def pre_norm_forward(self, graph, feat, get_attention=False):
         with graph.local_scope():
             if (graph.in_degrees() == 0).any():
                 raise DGLError('There are 0-in-degree nodes in the graph, '
@@ -131,6 +142,74 @@ class GDTLayer(nn.Module):
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
+
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def post_norm_forward(self, graph, feat, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               'output for those nodes will be invalid. '
+                               'This is harmful for some applications, '
+                               'causing silent performance regression. '
+                               'Adding self-loop on the input graph by '
+                               'calling `g = dgl.add_self_loop(g)` will resolve '
+                               'the issue. Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_head = in_dst = self.feat_drop(feat)
+            feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.sparse_mode != 'no_sparse':
+                a_score = edge_softmax(graph, e)
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
+                                                     sparse_mode=self.sparse_mode)
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
+                                                top_k_sum=a_top_sum)
+                if self.ppr_diff:
+                    graph.edata['a'] = a_n
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(a_n)
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
+            else:
+                # compute softmax
+                if self.ppr_diff:
+                    graph.edata['a'] = edge_softmax(graph, e)
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)
+                    # # message passing
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
+
+            # residual
+            if self.res_fc is not None:
+                # this part uses feat (very important to prevent over-smoothing)
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
+
+            rst = rst.flatten(1)
+            rst = self.graph_layer_norm(rst)
+
+            ff_rst = self.feed_forward_layer(self.feat_drop(rst))
+            rst = self.feat_drop(ff_rst) + rst  # residual
+            rst = self.ff_layer_norm(rst)
 
             if get_attention:
                 return rst, graph.edata['a']
