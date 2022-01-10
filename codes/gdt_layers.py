@@ -154,6 +154,9 @@ class GDTLayer(nn.Module):
 
 
 class RGDTLayer(nn.Module):
+    """
+    Heterogeneous graph neural network (first layer) with different edge type
+    """
     def __init__(self,
                  in_ent_feats: int,
                  in_rel_feats: int,
@@ -165,7 +168,6 @@ class RGDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  negative_slope: float = 0.2,
                  residual=True,
-                 activation=None,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
 
@@ -183,7 +185,6 @@ class RGDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-
         self.fc_rel = nn.Linear(self._in_rel_feats, self._num_heads * self._head_dim, bias=False)
 
         self.feat_drop = nn.Dropout(feat_drop)
@@ -192,7 +193,7 @@ class RGDTLayer(nn.Module):
         self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_activation = nn.PReLU(init=negative_slope)  # for attention computation
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
 
         if residual:
             if in_ent_feats != out_ent_feats:
@@ -208,7 +209,6 @@ class RGDTLayer(nn.Module):
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.reset_parameters()
-        self.activation = activation
         self.ppr_diff = ppr_diff
 
     def reset_parameters(self):
@@ -273,10 +273,6 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
-            # +++++++++++++++++++++++++++++++++++++++
-            # activation
-            if self.activation:
-                rst = self.activation(rst)
             # +++++++++++++++++++++++++++++++++++++++
             if get_attention:
                 return rst, graph.edata['a']
