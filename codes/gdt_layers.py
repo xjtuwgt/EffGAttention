@@ -81,7 +81,7 @@ class GDTLayer(nn.Module):
         if self.pre_norm_mode:
             return self.pre_norm_forward(graph=graph, feat=feat, get_attention=get_attention)
         else:
-            return self.pre_norm_forward(graph=graph, feat=feat, get_attention=get_attention)
+            return self.post_norm_forward(graph=graph, feat=feat, get_attention=get_attention)
 
     def pre_norm_forward(self, graph, feat, get_attention=False):
         with graph.local_scope():
