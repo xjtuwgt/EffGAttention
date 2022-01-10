@@ -1,9 +1,9 @@
 import math
-
 from codes.gdt_layers import GDTLayer
 from torch import nn
 from torch import Tensor
 from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
+from torch.nn import LayerNorm
 
 
 class GDTEncoder(nn.Module):
@@ -49,6 +49,7 @@ class GDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
+        self.layer_norm = LayerNorm(self.config.hidden_dim)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
@@ -66,5 +67,5 @@ class GDTEncoder(nn.Module):
             h = inputs
         for l in range(self.config.layers):
             h = self.graph_encoder[l](graph, h)
-        logits = self.classifier(h)
+        logits = self.classifier(self.layer_norm(h))
         return logits
