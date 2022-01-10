@@ -274,7 +274,7 @@ class RGDTLayer(nn.Module):
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata['ft']
             # residual
-            if self.res_fc_ent is not None:
+            if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
                 rst = self.feat_drop(rst) + resval
 

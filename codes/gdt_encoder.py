@@ -141,9 +141,9 @@ class RGDTEncoder(nn.Module):
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
 
     def forward(self, graph):
-        assert graph.number_of_nodes() <= self.ent_ember.num and graph.number_of_edges() <= self.rel_ember.num
+        assert graph.number_of_nodes() <= self.ent_ember.num
         e_h = self.ent_ember(torch.arange(graph.number_of_nodes()).to(self.dummy_param.device))
-        r_h = self.rel_ember(torch.arange(graph.number_of_edges()).to(self.dummy_param.device))
+        r_h = self.rel_ember(torch.arange(self.config.num_relations).to(self.dummy_param.device))
         h = self.graph_encoder[0](graph, e_h, r_h)
         for l in range(1, self.config.layers):
             h = self.graph_encoder[l](graph, h)
