@@ -118,7 +118,7 @@ def main(args):
 
     model = RGDTEncoder(config=args)
     model.to(args.device)
-    model.init_graph_ember(ent_emb=features, ent_freeze=False)
+    model.init_graph_ember(ent_emb=features, ent_freeze=True)
     print(model)
     optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
