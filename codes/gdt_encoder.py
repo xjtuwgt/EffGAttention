@@ -32,6 +32,7 @@ class GDTEncoder(nn.Module):
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
                                                   residual=self.config.residual,
+                                                  pre_norm=self.config.norm_mode in {'pre_norm'},
                                                   ppr_diff=self.config.ppr_diff))
 
         for _ in range(1, self.config.layers):
@@ -47,6 +48,7 @@ class GDTEncoder(nn.Module):
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
+                                                      pre_norm=self.config.norm_mode in {'pre_norm'},
                                                       ppr_diff=self.config.ppr_diff))
 
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
