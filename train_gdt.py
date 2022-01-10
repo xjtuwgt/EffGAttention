@@ -114,9 +114,10 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    feat_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
-    attn_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
+    feat_drop_ratio_list = np.arange(0.3, 0.7, 0.1).tolist()
+    attn_drop_ratio_list = np.arange(0.3, 0.7, 0.1).tolist()
     lr_ratio_list = [2e-4, 5e-4, 1e-3, 2e-3]
+    top_kp_list = [4, 6, 8]
 
     acc_list = []
     search_best_test_acc = 0.0
@@ -124,29 +125,32 @@ def main(args):
     for f_dr in feat_drop_ratio_list:
         for a_dr in attn_drop_ratio_list:
             for lr in lr_ratio_list:
-                args.learning_rate = lr
-                args.feat_drop = f_dr
-                args.attn_drop = a_dr
-                # create model
-                model = GDTEncoder(config=args)
-                model.to(args.device)
-                print(model)
-                optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-                scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
-                                                            num_training_steps=args.num_train_epochs)
+                for top_kp in top_kp_list:
+                    args.top_k = top_kp
+                    args.sparse_mode = 'top_k'
+                    args.learning_rate = lr
+                    args.feat_drop = f_dr
+                    args.attn_drop = a_dr
+                    # create model
+                    model = GDTEncoder(config=args)
+                    model.to(args.device)
+                    print(model)
+                    optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+                    scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+                                                                num_training_steps=args.num_train_epochs)
 
-                test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
-                                                                    val_mask=val_mask, test_mask=test_mask,
-                                                                    features=features, labels=labels,
-                                                                    optimizer=optimizer, scheduler=scheduler,
-                                                                    args=args)
-                acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
-                logger.info('*' * 50)
-                logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
-                logger.info('*' * 50)
-                if search_best_test_acc < best_test_acc:
-                    search_best_test_acc = best_test_acc
-                    search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+                    test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+                                                                        val_mask=val_mask, test_mask=test_mask,
+                                                                        features=features, labels=labels,
+                                                                        optimizer=optimizer, scheduler=scheduler,
+                                                                        args=args)
+                    acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                    logger.info('*' * 50)
+                    logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                    logger.info('*' * 50)
+                    if search_best_test_acc < best_test_acc:
+                        search_best_test_acc = best_test_acc
+                        search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
     for setting_acc in acc_list:
         print(setting_acc)
     print(search_best_test_acc)
