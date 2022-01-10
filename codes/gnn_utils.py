@@ -27,33 +27,26 @@ from torch import Tensor, LongTensor
 """
 
 
-def edge_message_func(edges):
-    return {'m_a': edges.data['ta']}
-
-
 def edge_udf_attn_func(edges):
-    attention_scores = edges.data['ta']
-    top_k_attn_score = edges.dst['top_a']
-    attention_mask = attention_scores >= top_k_attn_score
+    attention_mask = edges.data['ta'] >= edges.dst['top_a']
     return {'attn_mask': attention_mask}
 
 
 def relu_edge_normalization(graph: DGLHeteroGraph, attn_scores: Tensor):
-    def attn_sum_red_func(nodes):
-        edge_attention_score = nodes.mailbox['m_a']
-        attn_score_sum = edge_attention_score.sum(dim=1)
-        return {'attn_sum': attn_score_sum}
-
-    def edge_udf_attn_normalization_func(edges):
-        attention_scores = edges.data['ta']
-        sum_attn_scores = edges.dst['attn_sum']
-        norm_attends = attention_scores / (sum_attn_scores + 1e-6)
-        return {'norm_attn': norm_attends}
-
+    # def attn_sum_red_func(nodes):
+    #     edge_attention_score = nodes.mailbox['m_a']
+    #     attn_score_sum = edge_attention_score.sum(dim=1)
+    #     return {'attn_sum': attn_score_sum}
+    # def edge_udf_attn_normalization_func(edges):
+    #     attention_scores = edges.data['ta']
+    #     sum_attn_scores = edges.dst['attn_sum']
+    #     norm_attends = attention_scores / (sum_attn_scores + 1e-6)
+    #     return {'norm_attn': norm_attends}
     with graph.local_scope():
         graph.edata['ta'] = F.relu(attn_scores)
-        graph.update_all(edge_message_func, attn_sum_red_func)
-        graph.apply_edges(edge_udf_attn_normalization_func)
+        graph.update_all(fn.copy_edge('ta', 'm_a'), fn.sum('m_a', 'attn_sum'))
+        graph.ndata['attn_sum'] = graph.ndata['attn_sum'] + 1e-6
+        graph.apply_edges(fn.e_div_v('ta', 'attn_sum', 'norm_attn'))
         norm_attentions = graph.edata.pop('norm_attn')
         return norm_attentions
 
@@ -65,7 +58,6 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
     :param k:
     :return:
     """
-
     def top_k_reduce_func(nodes):
         edge_attention_score = nodes.mailbox['m_a']
         # print(edge_attention_score.shape)
@@ -83,7 +75,7 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
 
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
-        graph.update_all(edge_message_func, top_k_reduce_func)
+        graph.update_all(fn.copy_edge('ta', 'm_a'), top_k_reduce_func)
         graph.apply_edges(edge_udf_attn_func)
         attn_mask = graph.edata.pop('attn_mask')
         top_k_attn_sum = graph.ndata.pop('top_as')
@@ -98,7 +90,6 @@ def top_p_attention(graph: DGLHeteroGraph, attn_scores: Tensor, p: float = 0.75)
     :param p:
     :return:
     """
-
     def top_p_reduce_func(nodes):
         edge_attention_score = nodes.mailbox['m_a']
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
@@ -124,7 +115,7 @@ def top_p_attention(graph: DGLHeteroGraph, attn_scores: Tensor, p: float = 0.75)
 
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
-        graph.update_all(edge_message_func, top_p_reduce_func)
+        graph.update_all(fn.copy_edge('ta', 'm_a'), top_p_reduce_func)
         graph.apply_edges(edge_udf_attn_func)
         attn_mask = graph.edata.pop('attn_mask')
         top_k_attn_sum = graph.ndata.pop('top_as')
