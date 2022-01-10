@@ -138,7 +138,6 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
     #     sum_attn_scores = edges.dst['attn_sum']
     #     norm_attends = attention_scores / sum_attn_scores
     #     return {'norm_attn': norm_attends}
-
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
         graph.edata['ta'][~attn_mask] = 0.0
