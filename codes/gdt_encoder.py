@@ -49,7 +49,10 @@ class GDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.layer_norm = LayerNorm(self.config.hidden_dim)
+        if self.config.layers >= 6:
+            self.layer_norm = LayerNorm(self.config.hidden_dim)
+        else:
+            self.layer_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
@@ -116,7 +119,10 @@ class RGDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.layer_norm = LayerNorm(self.config.hidden_dim)
+        if self.config.layers >= 6:
+            self.layer_norm = LayerNorm(self.config.hidden_dim)
+        else:
+            self.layer_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
