@@ -5,7 +5,6 @@ from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
-from torch.nn import InstanceNorm1d as insNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionWiseFeedForward, small_init_gain_v2
@@ -60,7 +59,6 @@ class GDTLayer(nn.Module):
             self.register_buffer('res_fc', None)
 
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
-        self.graph_ins_norm = insNorm(self._num_heads)
         self.ff_layer_norm = layerNorm(self._out_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
@@ -87,23 +85,19 @@ class GDTLayer(nn.Module):
                                'the issue. Setting ``allow_zero_in_degree`` '
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
-            # in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
-            in_head = in_dst = self.feat_drop(feat)
+            in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
             feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
-            feat_head = self.graph_ins_norm(feat_head)
-            feat_tail = self.graph_ins_norm(feat_tail)
-            feat_enti = self.graph_ins_norm(feat_enti)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
+            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
