@@ -160,6 +160,7 @@ def main(args):
                     search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
                 logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
                                                                                              search_best_val_acc))
+                logger.info('*' * 30)
     for setting_acc in acc_list:
         print(setting_acc)
     print(search_best_test_acc)
