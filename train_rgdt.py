@@ -122,6 +122,7 @@ def main(args):
 
     acc_list = []
     search_best_test_acc = 0.0
+    search_best_val_acc = 0.0
     search_best_settings = None
     for f_dr in feat_drop_ratio_list:
         for a_dr in attn_drop_ratio_list:
@@ -133,7 +134,13 @@ def main(args):
                 model = RGDTEncoder(config=args)
                 model.to(args.device)
                 model.init_graph_ember(ent_emb=features, ent_freeze=True)
-                print(model)
+                # ++++++++++++++++++++++++++++++++++++
+                logging.info('Model Parameter Configuration:')
+                for name, param in model.named_parameters():
+                    logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
+                                                                              str(param.requires_grad)))
+                logging.info('*' * 75)
+                # ++++++++++++++++++++++++++++++++++++
                 optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
                 scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                             num_training_steps=args.num_train_epochs)
@@ -147,9 +154,12 @@ def main(args):
                 logger.info('*' * 50)
                 logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
                 logger.info('*' * 50)
-                if search_best_test_acc < best_test_acc:
+                if search_best_val_acc < best_val_acc:
+                    search_best_val_acc = best_val_acc
                     search_best_test_acc = best_test_acc
                     search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+                logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
+                                                                                             search_best_val_acc))
     for setting_acc in acc_list:
         print(setting_acc)
     print(search_best_test_acc)

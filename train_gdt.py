@@ -135,7 +135,13 @@ def main(args):
                     # create model
                     model = GDTEncoder(config=args)
                     model.to(args.device)
-                    print(model)
+                    # ++++++++++++++++++++++++++++++++++++
+                    logging.info('Model Parameter Configuration:')
+                    for name, param in model.named_parameters():
+                        logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
+                                                                                  str(param.requires_grad)))
+                    logging.info('*' * 75)
+                    # ++++++++++++++++++++++++++++++++++++
                     optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
                     scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                                 num_training_steps=args.num_train_epochs)
