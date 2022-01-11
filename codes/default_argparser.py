@@ -103,7 +103,7 @@ def default_parser():
     parser.add_argument('--alpha', type=float, default=0.15)
     parser.add_argument('--hidden_dim', type=int, default=256)
     parser.add_argument('--head_num', type=int, default=8)
-    parser.add_argument('--layers', type=int, default=3)
+    parser.add_argument('--layers', type=int, default=2)
     parser.add_argument('--negative_slope', type=float, default=0.25)
     parser.add_argument('--top_p', type=float, default=0.8)
     parser.add_argument('--top_k', type=int, default=8)
