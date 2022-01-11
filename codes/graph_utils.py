@@ -6,6 +6,7 @@ from dgl.sampling import sample_neighbors
 from torch import Tensor
 from time import time
 import copy
+from dgl import DGLHeteroGraph
 
 
 def construct_special_graph_dictionary(graph, hop_num: int, n_relations: int):
@@ -48,3 +49,22 @@ def add_self_loop_in_graph(graph, self_loop_r: int):
     node_ids = torch.arange(number_of_nodes)
     g.add_edges(node_ids, node_ids, {'rid': self_loop_r_array})
     return g
+
+
+def k_hop_graph_edge_collection(graph: DGLHeteroGraph, hop_num: int = 5):
+    k_hop_graph_edge_dict = {}
+    copy_graph = copy.deepcopy(graph)
+    copy_graph = dgl.remove_self_loop(g=copy_graph)
+    # number_of_nodes = copy_graph.number_of_nodes()
+    # one_hop_head_nodes,  one_hop_tail_nodes = copy_graph.edges()
+    # one_hop_edges = number_of_nodes * one_hop_head_nodes + one_hop_tail_nodes
+    # one_hop_edge_set = set(one_hop_edges.tolist())
+    # k_hop_graph_edge_dict['1_hop'] = one_hop_edge_set
+    for k in range(2, hop_num+1):
+        k_hop_graph = dgl.khop_graph(copy_graph, k=k)
+        if k_hop_graph.number_of_edges() > 0:
+            head_nodes, tail_nodes = k_hop_graph.edges()
+            k_hop_graph_edge_dict['{}_hop'.format(k)] = (head_nodes, tail_nodes)
+        else:
+            break
+    return k_hop_graph_edge_dict
