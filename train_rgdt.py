@@ -116,22 +116,6 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    # model = RGDTEncoder(config=args)
-    # model.to(args.device)
-    # model.init_graph_ember(ent_emb=features, ent_freeze=True)
-    # print(model)
-    # optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-    # scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
-    #                                             num_training_steps=args.num_train_epochs)
-    #
-    # test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
-    #                                                     val_mask=val_mask, test_mask=test_mask,
-    #                                                     labels=labels,
-    #                                                     optimizer=optimizer, scheduler=scheduler,
-    #                                                     args=args)
-    #
-    # print(test_acc, best_val_acc, best_test_acc)
-
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     lr_ratio_list = [1e-4, 2e-4, 3e-4, 5e-4, 1e-3]
