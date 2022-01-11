@@ -114,9 +114,9 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    feat_drop_ratio_list = np.arange(0.3, 0.61, 0.05).tolist()
-    attn_drop_ratio_list = np.arange(0.3, 0.61, 0.05).tolist()
-    lr_ratio_list = [5e-4, 1e-3]
+    feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
+    attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
+    lr_ratio_list = [1e-4, 2e-4, 3e-4, 5e-4, 1e-3]
     top_kp_list = [4]
 
     acc_list = []
