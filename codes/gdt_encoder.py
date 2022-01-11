@@ -9,17 +9,8 @@ class GDTEncoder(nn.Module):
     def __init__(self, config):
         super(GDTEncoder, self).__init__()
         self.config = config
-        if self.config.central_emb:
-            self.central_emb_layer = EmbeddingLayer(num=self.config.max_degree, dim=self.config.degree_emb_dim)
-            self.feature_map = nn.Linear(in_features=self.config.node_emb_dim, out_features=self.config.degree_emb_dim)
-            input_dim = self.config.degree_emb_dim
-        else:
-            input_dim = self.config.node_emb_dim
-            self.central_emb_layer = None
-            self.feature_map = None
-
         self.graph_encoder = nn.ModuleList()
-        self.graph_encoder.append(module=GDTLayer(in_ent_feats=input_dim,
+        self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
                                                   out_ent_feats=self.config.hidden_dim,
                                                   num_heads=self.config.head_num,
                                                   hop_num=self.config.gnn_hop_num,
