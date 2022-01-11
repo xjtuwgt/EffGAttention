@@ -1,9 +1,7 @@
 from codes.gdt_layers import GDTLayer, RGDTLayer
 from torch import nn
 from torch import Tensor
-from dgl.nn.pytorch.utils import Identity
 from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
-from torch.nn import LayerNorm as layerNorm
 import torch
 
 
@@ -52,15 +50,11 @@ class GDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
-        if self.config.layers >= 2:
-            self.output_norm = layerNorm(self.config.hidden_dim)
-        else:
-            self.output_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = nn.init.calculate_gain('relu')
+        gain = small_init_gain_v2(d_in=self.config.hidden_dim, d_out=self.config.num_classes)
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
         if self.feature_map:
             nn.init.normal_(self.feature_map.weight, mean=0, std=small_init_gain_v2(d_in=self.config.node_emb_dim,
@@ -73,7 +67,7 @@ class GDTEncoder(nn.Module):
             h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.output_norm(h))
+        logits = self.classifier(h)
         return logits
 
 
@@ -124,16 +118,12 @@ class RGDTEncoder(nn.Module):
                                                       negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        if self.config.layers >= 2:
-            self.output_norm = layerNorm(self.config.hidden_dim)
-        else:
-            self.output_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
 
     def reset_parameters(self):
-        gain = nn.init.calculate_gain('relu')
+        gain = small_init_gain_v2(d_in=self.config.hidden_dim, d_out=self.config.num_classes)
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
@@ -149,5 +139,5 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.output_norm(h))
+        logits = self.classifier(h)
         return logits
