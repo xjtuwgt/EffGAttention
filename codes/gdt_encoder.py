@@ -3,7 +3,8 @@ from torch import nn
 from torch import Tensor
 from dgl.nn.pytorch.utils import Identity
 from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
-from torch.nn import LayerNorm
+# from torch.nn import LayerNorm
+from codes.gnn_utils import RMSNorm as layerNorm
 import torch
 
 
@@ -53,7 +54,7 @@ class GDTEncoder(nn.Module):
                                                       ppr_diff=self.config.ppr_diff))
 
         if self.config.layers >= 6:
-            self.output_norm = LayerNorm(self.config.hidden_dim)
+            self.output_norm = layerNorm(self.config.hidden_dim)
         else:
             self.output_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
@@ -125,7 +126,7 @@ class RGDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         if self.config.layers >= 6:
-            self.output_norm = LayerNorm(self.config.hidden_dim)
+            self.output_norm = layerNorm(self.config.hidden_dim)
         else:
             self.output_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
