@@ -1,6 +1,7 @@
 import torch
 from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
 import copy
+from dgl import DGLHeteroGraph
 import dgl
 from codes.graph_utils import construct_special_graph_dictionary, add_relation_ids_to_graph, add_self_loop_in_graph
 import numpy as np
@@ -96,6 +97,25 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata.update({'nid': torch.arange(0, number_of_nodes, dtype=torch.long)})
     return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_relation_dict
+
+
+def k_hop_graph_edge_collection(graph: DGLHeteroGraph, hop_num: int = 5):
+    k_hop_graph_edge_dict = {}
+    copy_graph = copy.deepcopy(graph)
+    copy_graph = dgl.remove_self_loop(g=copy_graph)
+    # number_of_nodes = copy_graph.number_of_nodes()
+    # one_hop_head_nodes,  one_hop_tail_nodes = copy_graph.edges()
+    # one_hop_edges = number_of_nodes * one_hop_head_nodes + one_hop_tail_nodes
+    # one_hop_edge_set = set(one_hop_edges.tolist())
+    # k_hop_graph_edge_dict['1_hop'] = one_hop_edge_set
+    for k in range(2, hop_num+1):
+        k_hop_graph = dgl.khop_graph(copy_graph, k=k)
+        if k_hop_graph.number_of_edges() > 0:
+            head_nodes, tail_nodes = k_hop_graph.edges()
+            k_hop_graph_edge_dict['{}_hop'.format(k)] = (head_nodes, tail_nodes)
+        else:
+            break
+    return k_hop_graph_edge_dict
 
 
 def label_mask_drop(train_mask, drop_ratio: float = 0.05):
