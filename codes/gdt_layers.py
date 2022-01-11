@@ -46,7 +46,7 @@ class GDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)))
+        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
@@ -94,11 +94,11 @@ class GDTLayer(nn.Module):
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
+            e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
