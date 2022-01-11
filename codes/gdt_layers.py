@@ -50,7 +50,8 @@ class GDTLayer(nn.Module):
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
-        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
+        # self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
+        self.attn_activation = nn.Mish()  # for attention computation
         if residual:
             if self._in_tail_feats != self._out_feats:
                 self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
@@ -203,7 +204,8 @@ class RGDTLayer(nn.Module):
         self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
+        # self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
+        self.attn_activation = nn.Mish()  # for attention computation
 
         if residual:
             if in_ent_feats != out_ent_feats:
