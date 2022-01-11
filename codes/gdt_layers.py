@@ -200,8 +200,7 @@ class RGDTLayer(nn.Module):
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
 
-        self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_e = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
 
@@ -237,8 +236,7 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
-        nn.init.xavier_normal_(self.attn_h, gain=gain)
-        nn.init.xavier_normal_(self.attn_t, gain=gain)
+        nn.init.xavier_normal_(self.attn_e, gain=gain)
         nn.init.xavier_normal_(self.attn_r, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
@@ -254,20 +252,24 @@ class RGDTLayer(nn.Module):
             feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn_e).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             in_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
-            et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
             er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             edge_ids = graph.edata['rid']
             er = er[edge_ids]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.srcdata.update({'ft': feat_enti, 'eh': eh})
-            graph.dstdata.update({'et': et})
-            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e') + er)
+            e = ((graph.edata.pop('e')/self._head_dim) + er)
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
                 a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
