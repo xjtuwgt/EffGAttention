@@ -3,8 +3,7 @@ from torch import nn
 from torch import Tensor
 from dgl.nn.pytorch.utils import Identity
 from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
-# from torch.nn import LayerNorm
-from codes.gnn_utils import RMSNorm as layerNorm
+from torch.nn import LayerNorm as layerNorm
 import torch
 
 
