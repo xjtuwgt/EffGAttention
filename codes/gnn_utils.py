@@ -2,13 +2,13 @@ import math
 
 from dgl import DGLHeteroGraph
 import torch
-import dgl
 import dgl.function as fn
 from torch import nn
 import torch.nn.functional as F
 import torch.nn.init as INIT
 from dgl.nn.pytorch.utils import Identity
 from torch import Tensor, LongTensor
+from torch.nn.modules.instancenorm import _InstanceNorm
 
 """
     If the number of neighbors is large, then we need to select a subset of neighbors for feature aggregation
@@ -235,6 +235,48 @@ class RMSNorm(nn.Module):
             return self.scale * x_normed + self.offset
 
         return self.scale * x_normed
+
+
+class InstanceNorm(_InstanceNorm):
+    r"""Applies instance normalization over each individual example in a batch
+    of node features as described in the `"Instance Normalization: The Missing
+    Ingredient for Fast Stylization" <https://arxiv.org/abs/1607.08022>`_
+    paper
+
+    .. math::
+        \mathbf{x}^{\prime}_i = \frac{\mathbf{x} -
+        \textrm{E}[\mathbf{x}]}{\sqrt{\textrm{Var}[\mathbf{x}] + \epsilon}}
+        \odot \gamma + \beta
+
+    The mean and standard-deviation are calculated per-dimension separately for
+    each object in a mini-batch.
+
+    Args:
+        in_channels (int): Size of each input sample.
+        eps (float, optional): A value added to the denominator for numerical
+            stability. (default: :obj:`1e-5`)
+        momentum (float, optional): The value used for the running mean and
+            running variance computation. (default: :obj:`0.1`)
+        affine (bool, optional): If set to :obj:`True`, this module has
+            learnable affine parameters :math:`\gamma` and :math:`\beta`.
+            (default: :obj:`False`)
+        track_running_stats (bool, optional): If set to :obj:`True`, this
+            module tracks the running mean and variance, and when set to
+            :obj:`False`, this module does not track such statistics and always
+            uses instance statistics in both training and eval modes.
+            (default: :obj:`False`)
+    """
+    def __init__(self, in_channels, eps=1e-5, momentum=0.1, affine=False,
+                 track_running_stats=False):
+        super().__init__(in_channels, eps, momentum, affine,
+                         track_running_stats)
+
+    def forward(self, x: Tensor) -> Tensor:
+        out = F.instance_norm(
+            x.t().unsqueeze(0), self.running_mean, self.running_var,
+            self.weight, self.bias, self.training
+            or not self.track_running_stats, self.momentum, self.eps)
+        return out.squeeze(0).t()
 
 
 # class NeighborInteractionLayer(nn.Module):

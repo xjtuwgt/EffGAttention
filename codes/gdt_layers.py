@@ -4,8 +4,9 @@ import torch.nn as nn
 from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
-from torch.nn import LayerNorm as layerNorm
+# from torch.nn import LayerNorm as layerNorm
 # from codes.gnn_utils import RMSNorm as layerNorm
+from codes.gnn_utils import InstanceNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionWiseFeedForward, small_init_gain
@@ -146,7 +147,7 @@ class GDTLayer(nn.Module):
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
-                graph.srcdata['h'] = feat
+                graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
@@ -312,7 +313,7 @@ class RGDTLayer(nn.Module):
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
-                graph.srcdata['h'] = feat
+                graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
