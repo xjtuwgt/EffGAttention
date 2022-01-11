@@ -52,7 +52,7 @@ class GDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
-        if self.config.layers >= 6:
+        if self.config.layers >= 2:
             self.output_norm = layerNorm(self.config.hidden_dim)
         else:
             self.output_norm = Identity()
@@ -124,7 +124,7 @@ class RGDTEncoder(nn.Module):
                                                       negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        if self.config.layers >= 6:
+        if self.config.layers >= 2:
             self.output_norm = layerNorm(self.config.hidden_dim)
         else:
             self.output_norm = Identity()
