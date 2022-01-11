@@ -87,9 +87,9 @@ class GDTLayer(nn.Module):
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
             in_feat_norm = self.graph_layer_norm(feat)
-            feat_head = torch.tanh(self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim))
-            feat_tail = torch.tanh(self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim))
-            feat_enti = torch.tanh(self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim))
+            feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
@@ -146,11 +146,11 @@ class GDTLayer(nn.Module):
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
-                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.srcdata['h'] = feat
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
 
 
@@ -312,9 +312,9 @@ class RGDTLayer(nn.Module):
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
-                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.srcdata['h'] = feat
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
