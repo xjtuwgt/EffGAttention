@@ -54,7 +54,7 @@ class GDTEncoder(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = small_init_gain_v2(d_in=self.config.hidden_dim, d_out=self.config.num_classes)
+        gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
         if self.feature_map:
             nn.init.normal_(self.feature_map.weight, mean=0, std=small_init_gain_v2(d_in=self.config.node_emb_dim,
@@ -123,7 +123,7 @@ class RGDTEncoder(nn.Module):
         self.dummy_param = nn.Parameter(torch.empty(0))
 
     def reset_parameters(self):
-        gain = small_init_gain_v2(d_in=self.config.hidden_dim, d_out=self.config.num_classes)
+        gain = small_init_gain_v2('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
