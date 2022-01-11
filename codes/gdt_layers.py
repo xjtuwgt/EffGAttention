@@ -247,7 +247,7 @@ class RGDTLayer(nn.Module):
                                ' Setting ``allow_zero_in_degree`` '
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
-            in_feat_norm = self.graph_layer_norm(ent_feat)
+            in_feat_norm = self.graph_layer_ent_norm(ent_feat)
             feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
