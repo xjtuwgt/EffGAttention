@@ -27,21 +27,12 @@ from torch import Tensor, LongTensor
 """
 
 
-def edge_udf_attn_func(edges):
+def edge_udf_attn_mask_func(edges):
     attention_mask = edges.data['ta'] >= edges.dst['top_a']
     return {'attn_mask': attention_mask}
 
 
 def relu_edge_normalization(graph: DGLHeteroGraph, attn_scores: Tensor):
-    # def attn_sum_red_func(nodes):
-    #     edge_attention_score = nodes.mailbox['m_a']
-    #     attn_score_sum = edge_attention_score.sum(dim=1)
-    #     return {'attn_sum': attn_score_sum}
-    # def edge_udf_attn_normalization_func(edges):
-    #     attention_scores = edges.data['ta']
-    #     sum_attn_scores = edges.dst['attn_sum']
-    #     norm_attends = attention_scores / (sum_attn_scores + 1e-6)
-    #     return {'norm_attn': norm_attends}
     with graph.local_scope():
         graph.edata['ta'] = F.relu(attn_scores)
         graph.update_all(fn.copy_edge('ta', 'm_a'), fn.sum('m_a', 'attn_sum'))
@@ -60,9 +51,6 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
     """
     def top_k_reduce_func(nodes):
         edge_attention_score = nodes.mailbox['m_a']
-        # print(edge_attention_score.shape)
-        # print(edge_attention_score[0].squeeze(-1)[:,0].sum(), edge_attention_score[0].squeeze(-1)[:,0])
-        # print(edge_attention_score.sum(1))
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
         if neighbor_num <= k:
             ret_a = torch.empty(batch_size, head_num, 1).fill_(edge_attention_score.min()).to(attn_scores.device)
@@ -76,7 +64,7 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
         graph.update_all(fn.copy_edge('ta', 'm_a'), top_k_reduce_func)
-        graph.apply_edges(edge_udf_attn_func)
+        graph.apply_edges(edge_udf_attn_mask_func)
         attn_mask = graph.edata.pop('attn_mask')
         top_k_attn_sum = graph.ndata.pop('top_as')
         return attn_mask, top_k_attn_sum
@@ -116,7 +104,7 @@ def top_p_attention(graph: DGLHeteroGraph, attn_scores: Tensor, p: float = 0.75)
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
         graph.update_all(fn.copy_edge('ta', 'm_a'), top_p_reduce_func)
-        graph.apply_edges(edge_udf_attn_func)
+        graph.apply_edges(edge_udf_attn_mask_func)
         attn_mask = graph.edata.pop('attn_mask')
         top_k_attn_sum = graph.ndata.pop('top_as')
         return attn_mask, top_k_attn_sum
@@ -133,11 +121,6 @@ def top_kp_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5, p: 
 
 
 def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_mask: Tensor, top_k_sum: Tensor):
-    # def edge_udf_attn_normalization_func(edges):
-    #     attention_scores = edges.data['ta']
-    #     sum_attn_scores = edges.dst['attn_sum']
-    #     norm_attends = attention_scores / sum_attn_scores
-    #     return {'norm_attn': norm_attends}
     with graph.local_scope():
         graph.edata['ta'] = attn_scores
         graph.edata['ta'][~attn_mask] = 0.0
@@ -179,7 +162,7 @@ def small_init_gain_v2(d_in, d_out):
 
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, num: int, dim: int, drop_ratio: float = 0.1, project_dim: int = None):
+    def __init__(self, num: int, dim: int, project_dim: int = None):
         super(EmbeddingLayer, self).__init__()
         self.num = num
         self.dim = dim
