@@ -158,7 +158,7 @@ def small_init_gain(d_in, d_out):
 
 
 def small_init_gain_v2(d_in, d_out):
-    return math.sqrt(6.0 / (d_in + d_out))
+    return math.sqrt(2.0 / (d_in + d_out))
 
 
 class EmbeddingLayer(nn.Module):
