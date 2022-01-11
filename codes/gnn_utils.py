@@ -147,7 +147,7 @@ class PositionWiseFeedForward(nn.Module):
         return self.w_2(self.dropout(F.relu(self.w_1(x))))
 
     def init(self):
-        gain = small_init_gain_v2('relu')
+        gain = nn.init.calculate_gain('relu')
         # gain = small_init_gain_v2(d_in=self.model_dim, d_out=self.hidden_dim) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.w_1.weight, gain=gain)
         # gain = small_init_gain_v2(d_in=self.hidden_dim, d_out=self.model_dim) / math.sqrt(self.layer_num)
