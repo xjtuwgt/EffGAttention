@@ -65,7 +65,7 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
@@ -194,7 +194,7 @@ class RGDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.fc_rel = nn.Linear(self._in_rel_feats, self._num_heads * self._head_dim, bias=False)
+        self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
@@ -218,8 +218,8 @@ class RGDTLayer(nn.Module):
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-        self.reset_parameters()
         self.ppr_diff = ppr_diff
+        self.reset_parameters()
 
     def reset_parameters(self):
         """
@@ -253,8 +253,8 @@ class RGDTLayer(nn.Module):
             feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
-            in_rel_norm = self.feat_drop(self.graph_layer_rel_norm(rel_feat))
-            feat_rel = self.fc_rel(in_rel_norm).view(-1, self._num_heads, self._head_dim)
+            in_rel_norm = self.graph_layer_rel_norm(rel_feat)
+            feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
             et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
@@ -292,7 +292,6 @@ class RGDTLayer(nn.Module):
             if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
                 rst = self.feat_drop(rst) + resval
-
             rst = rst.flatten(1)
             # +++++++++++++++++++++++++++++++++++++++
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
