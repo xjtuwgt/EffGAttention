@@ -4,7 +4,6 @@ from torch import Tensor
 from dgl.nn.pytorch.utils import Identity
 from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
 from torch.nn import LayerNorm
-from torch.nn import InstanceNorm1d
 import torch
 
 
@@ -50,7 +49,11 @@ class GDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.output_norm = InstanceNorm1d(num_features=1, affine=True)
+
+        if self.config.layers >= 6:
+            self.output_norm = LayerNorm(self.config.hidden_dim)
+        else:
+            self.output_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
@@ -68,7 +71,7 @@ class GDTEncoder(nn.Module):
             h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.output_norm(h.unsqueeze(1)).squeeze(1))
+        logits = self.classifier(self.output_norm(h))
         return logits
 
 
@@ -117,7 +120,10 @@ class RGDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.output_norm = InstanceNorm1d(num_features=1, affine=True)
+        if self.config.layers >= 6:
+            self.output_norm = LayerNorm(self.config.hidden_dim)
+        else:
+            self.output_norm = Identity()
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
@@ -139,5 +145,5 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.output_norm(h.unsqueeze(1)).squeeze(1))
+        logits = self.classifier(self.output_norm(h))
         return logits
