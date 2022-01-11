@@ -1,4 +1,6 @@
 from torch.nn.modules.instancenorm import _InstanceNorm
+import torch.nn.functional as F
+from torch import Tensor
 
 class InstanceNorm(_InstanceNorm):
     r"""Applies instance normalization over each individual example in a batch
