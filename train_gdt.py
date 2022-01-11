@@ -151,6 +151,7 @@ def main(args):
                     if search_best_test_acc < best_test_acc:
                         search_best_test_acc = best_test_acc
                         search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+                    logger.info('Current best testing acc = {:.4f}'.format(search_best_test_acc))
     for setting_acc in acc_list:
         print(setting_acc)
     print(search_best_test_acc)
