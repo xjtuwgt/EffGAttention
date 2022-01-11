@@ -102,7 +102,6 @@ class GDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
-                print('here')
                 a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
                                                      sparse_mode=self.sparse_mode)
                 a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
