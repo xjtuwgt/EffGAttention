@@ -1,6 +1,7 @@
 from codes.gdt_layers import GDTLayer, RGDTLayer
 from torch import nn
 from torch import Tensor
+from torch.nn import LayerNorm
 from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
 import torch
 
@@ -50,6 +51,7 @@ class GDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
+        self.output_norm = LayerNorm(self.config.hidden_dim)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
@@ -67,7 +69,7 @@ class GDTEncoder(nn.Module):
             h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(h)
+        logits = self.classifier(self.output_norm(h))
         return logits
 
 
@@ -118,12 +120,13 @@ class RGDTEncoder(nn.Module):
                                                       negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
+        self.output_norm = LayerNorm(self.config.hidden_dim)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
 
     def reset_parameters(self):
-        gain = small_init_gain_v2('relu')
+        gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
@@ -139,5 +142,5 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(h)
+        logits = self.classifier(self.output_norm(h))
         return logits
