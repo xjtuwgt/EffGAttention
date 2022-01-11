@@ -101,7 +101,7 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--gnn_hop_num', type=int, default=8)
     parser.add_argument('--alpha', type=float, default=0.1)
-    parser.add_argument('--hidden_dim', type=int, default=64)
+    parser.add_argument('--hidden_dim', type=int, default=256)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=2)
     parser.add_argument('--negative_slope', type=float, default=0.2)
