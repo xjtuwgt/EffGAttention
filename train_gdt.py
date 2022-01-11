@@ -120,6 +120,7 @@ def main(args):
     top_kp_list = [4]
 
     acc_list = []
+    search_best_val_acc = 0.0
     search_best_test_acc = 0.0
     search_best_settings = None
     for f_dr in feat_drop_ratio_list:
@@ -148,12 +149,13 @@ def main(args):
                     logger.info('*' * 50)
                     logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
                     logger.info('*' * 50)
-                    if search_best_test_acc < best_test_acc:
+                    if search_best_val_acc < best_val_acc:
+                        search_best_val_acc = best_val_acc
                         search_best_test_acc = best_test_acc
                         search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
                     logger.info('Current best testing acc = {:.4f}'.format(search_best_test_acc))
-    for setting_acc in acc_list:
-        print(setting_acc)
+    for _, setting_acc in enumerate(acc_list):
+        print(_, setting_acc)
     print(search_best_test_acc)
     print(search_best_settings)
 
