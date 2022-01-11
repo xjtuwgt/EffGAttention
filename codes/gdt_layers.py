@@ -151,6 +151,8 @@ class GDTLayer(nn.Module):
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
                 feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+
+            feat = self.feat_drop(feat) + feat_0
             return feat
 
 
