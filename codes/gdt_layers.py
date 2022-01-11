@@ -87,9 +87,9 @@ class GDTLayer(nn.Module):
                                'to be `True` when constructing this module will '
                                'suppress the check and let the code run.')
             in_feat_norm = self.graph_layer_norm(feat)
-            feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
-            feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
-            feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_head = torch.tanh(self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim))
+            feat_tail = torch.tanh(self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim))
+            feat_enti = torch.tanh(self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
