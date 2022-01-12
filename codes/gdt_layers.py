@@ -112,12 +112,6 @@ class GDTLayer(nn.Module):
                 # # message passing
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata.pop('ft')
-                if self._degree_norm:
-                    degs = graph.in_degrees().float().clamp(min=1)
-                    tail_norm = torch.pow(degs, 0.5)
-                    shp = tail_norm.shape + (1,) * (rst.dim() - 1)
-                    tail_norm = torch.reshape(tail_norm, shp)
-                    rst = rst * tail_norm
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
@@ -139,27 +133,11 @@ class GDTLayer(nn.Module):
             feat_0 = graph.srcdata.pop('ft')
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
-            #+++++++++++++++++++++++++++++++++++++++++++++++++++
-            if self._degree_norm:
-                degs = graph.out_degrees().float().clamp(min=1)
-                head_norm = torch.pow(degs, -0.5)
-                shp = head_norm.shape + (1,) * (feat.dim() - 1)
-                head_norm = torch.reshape(head_norm, shp)
-
-                degs = graph.in_degrees().float().clamp(min=1)
-                tail_norm = torch.pow(degs, 0.5)
-                shp = tail_norm.shape + (1,) * (feat.dim() - 1)
-                tail_norm = torch.reshape(tail_norm, shp)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++
             for _ in range(self._hop_num):
-                if self._degree_norm and _ > 0:
-                    feat = feat * head_norm
                 graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                if self._degree_norm:
-                    feat = feat * tail_norm
                 feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
 
