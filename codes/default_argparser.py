@@ -91,7 +91,7 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--feat_drop', type=float, default=0.55)
     parser.add_argument('--attn_drop', type=float, default=0.45)
-    parser.add_argument('--edge_drop', type=float, default=0.1)
+    parser.add_argument('--edge_drop', type=float, default=0.05)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
     parser.add_argument('--stanford', type=boolean_string, default='false')
