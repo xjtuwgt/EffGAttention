@@ -38,7 +38,6 @@ class GDTEncoder(nn.Module):
                                                       negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.drop_out = nn.Dropout(self.config.out_drop)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
@@ -50,7 +49,7 @@ class GDTEncoder(nn.Module):
         h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.drop_out(h))
+        logits = self.classifier(h)
         return logits
 
 
