@@ -59,7 +59,7 @@ class GDTLayer(nn.Module):
         self.reset_parameters()
 
     def reset_parameters(self):
-        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
@@ -116,11 +116,11 @@ class GDTLayer(nn.Module):
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
                 resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
-                rst = rst + resval
+                rst = self.feat_drop(rst) + resval
 
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = ff_rst + rst  # residual
+            rst = self.feat_drop(ff_rst) + rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
@@ -138,7 +138,7 @@ class GDTLayer(nn.Module):
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
             return feat
 
 
@@ -213,7 +213,7 @@ class RGDTLayer(nn.Module):
         The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
         The attention weights are using xavier initialization method.
         """
-        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
@@ -271,11 +271,11 @@ class RGDTLayer(nn.Module):
             # residual
             if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
-                rst = rst + resval
+                rst = self.feat_drop(rst) + resval
             rst = rst.flatten(1)
             # +++++++++++++++++++++++++++++++++++++++
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = ff_rst + rst  # residual
+            rst = self.feat_drop(ff_rst) + rst  # residual
             # +++++++++++++++++++++++++++++++++++++++
             if get_attention:
                 return rst, graph.edata['a']
@@ -293,5 +293,5 @@ class RGDTLayer(nn.Module):
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
             return feat
