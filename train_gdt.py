@@ -115,12 +115,12 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    hid_dim_list = [64, 128, 256]
-    layer_num_list = [2, 3]
-    edge_drop_ratio_list = [0.0, 0.05]
-    lr_ratio_list = [1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3]
+    feat_drop_ratio_list = np.arange(0.3, 0.51, 0.1).tolist()
+    attn_drop_ratio_list = np.arange(0.3, 0.51, 0.1).tolist()
+    hid_dim_list = [256]
+    layer_num_list = [3]
+    edge_drop_ratio_list = [0.0, 0.05, 0.1]
+    lr_ratio_list = [5e-4, 1e-3, 2e-3]
 
     acc_list = []
     search_best_val_acc = 0.0
