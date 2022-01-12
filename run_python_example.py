@@ -43,6 +43,7 @@ class InstanceNorm(_InstanceNorm):
             or not self.track_running_stats, self.momentum, self.eps)
         return out.squeeze(0).t()
 
+
 from torch.nn import LayerNorm
 import torch
 from codes.utils import seed_everything

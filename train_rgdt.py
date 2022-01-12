@@ -118,6 +118,7 @@ def main(args):
 
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
+    edge_drop_ratio_list = [0.05, 0.1]
     lr_ratio_list = [1e-4, 2e-4, 3e-4, 5e-4, 1e-3]
 
     acc_list = []
@@ -126,41 +127,43 @@ def main(args):
     search_best_settings = None
     for f_dr in feat_drop_ratio_list:
         for a_dr in attn_drop_ratio_list:
-            for lr in lr_ratio_list:
-                args.learning_rate = lr
-                args.feat_drop = f_dr
-                args.attn_drop = a_dr
-                # create model
-                model = RGDTEncoder(config=args)
-                model.to(args.device)
-                model.init_graph_ember(ent_emb=features, ent_freeze=True)
-                # ++++++++++++++++++++++++++++++++++++
-                logging.info('Model Parameter Configuration:')
-                for name, param in model.named_parameters():
-                    logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
-                                                                              str(param.requires_grad)))
-                logging.info('*' * 75)
-                # ++++++++++++++++++++++++++++++++++++
-                optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-                scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
-                                                            num_training_steps=args.num_train_epochs)
+            for e_dr in edge_drop_ratio_list:
+                for lr in lr_ratio_list:
+                    args.learning_rate = lr
+                    args.feat_drop = f_dr
+                    args.attn_drop = a_dr
+                    args.edge_drop = e_dr
+                    # create model
+                    model = RGDTEncoder(config=args)
+                    model.to(args.device)
+                    model.init_graph_ember(ent_emb=features, ent_freeze=True)
+                    # ++++++++++++++++++++++++++++++++++++
+                    logging.info('Model Parameter Configuration:')
+                    for name, param in model.named_parameters():
+                        logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
+                                                                                  str(param.requires_grad)))
+                    logging.info('*' * 75)
+                    # ++++++++++++++++++++++++++++++++++++
+                    optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+                    scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+                                                                num_training_steps=args.num_train_epochs)
 
-                test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
-                                                                    val_mask=val_mask, test_mask=test_mask,
-                                                                    labels=labels,
-                                                                    optimizer=optimizer, scheduler=scheduler,
-                                                                    args=args)
-                acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
-                logger.info('*' * 50)
-                logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
-                logger.info('*' * 50)
-                if search_best_val_acc < best_val_acc:
-                    search_best_val_acc = best_val_acc
-                    search_best_test_acc = best_test_acc
-                    search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
-                logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
-                                                                                             search_best_val_acc))
-                logger.info('*' * 30)
+                    test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+                                                                        val_mask=val_mask, test_mask=test_mask,
+                                                                        labels=labels,
+                                                                        optimizer=optimizer, scheduler=scheduler,
+                                                                        args=args)
+                    acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                    logger.info('*' * 50)
+                    logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                    logger.info('*' * 50)
+                    if search_best_val_acc < best_val_acc:
+                        search_best_val_acc = best_val_acc
+                        search_best_test_acc = best_test_acc
+                        search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+                    logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
+                                                                                                 search_best_val_acc))
+                    logger.info('*' * 30)
     for setting_acc in acc_list:
         print(setting_acc)
     print(search_best_test_acc)

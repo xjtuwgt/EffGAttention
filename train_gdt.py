@@ -116,8 +116,8 @@ def main(args):
 
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
+    edge_drop_ratio_list = [0.05, 0.1]
     lr_ratio_list = [1e-4, 2e-4, 3e-4, 5e-4, 1e-3]
-    top_kp_list = [4]
 
     acc_list = []
     search_best_val_acc = 0.0
@@ -125,13 +125,12 @@ def main(args):
     search_best_settings = None
     for f_dr in feat_drop_ratio_list:
         for a_dr in attn_drop_ratio_list:
-            for lr in lr_ratio_list:
-                for top_kp in top_kp_list:
-                    args.top_k = top_kp
-                    args.sparse_mode = 'no_sparse'
+            for e_dr in edge_drop_ratio_list:
+                for lr in lr_ratio_list:
                     args.learning_rate = lr
                     args.feat_drop = f_dr
                     args.attn_drop = a_dr
+                    args.edge_drop = e_dr
                     # create model
                     model = GDTEncoder(config=args)
                     model.to(args.device)
