@@ -118,7 +118,7 @@ def main(args):
 
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    edge_drop_ratio_list = [0.0, 0.05, 0.1]
+    edge_drop_ratio_list = [0.0, 0.05]
     lr_ratio_list = [1e-4, 2e-4, 5e-4, 1e-3]
 
     acc_list = []
@@ -155,7 +155,9 @@ def main(args):
                                                                         args=args)
                     acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
                     logger.info('*' * 50)
-                    logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                    logger.info('{:.4f}\t{:.4f}\t{:.4f}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, e_dr,
+                                                                                            test_acc, best_val_acc,
+                                                                                            best_test_acc))
                     logger.info('*' * 50)
                     if search_best_val_acc < best_val_acc:
                         search_best_val_acc = best_val_acc

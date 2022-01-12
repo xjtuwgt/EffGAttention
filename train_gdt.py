@@ -152,7 +152,9 @@ def main(args):
                                                                         args=args)
                     acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
                     logger.info('*' * 50)
-                    logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+                    logger.info('{:.4f}\t{:.4f}\t{:.4f}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, e_dr,
+                                                                                            test_acc, best_val_acc,
+                                                                                            best_test_acc))
                     logger.info('*' * 50)
                     if search_best_val_acc < best_val_acc:
                         search_best_val_acc = best_val_acc
