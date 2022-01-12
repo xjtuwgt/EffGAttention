@@ -165,7 +165,7 @@ class GDTLayer(nn.Module):
             for _ in range(self._hop_num):
                 if self._degree_norm and _ > 0:
                     feat = feat * head_norm
-                graph.srcdata['h'] = feat
+                graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
