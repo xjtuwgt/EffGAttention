@@ -8,6 +8,7 @@ from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, 
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
 from codes.utils import seed_everything
+from codes.utils import Citation_HypeParameterSpace, citation_random_search_hyper_tunner
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -115,62 +116,47 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    hid_dim_list = [256]
-    layer_num_list = [3]
-    edge_drop_ratio_list = [0.0]
-    lr_ratio_list = [1e-4, 5e-4, 1e-3, 5e-3]
-
+    num_of_experiments = 50
+    hyper_search_space = Citation_HypeParameterSpace()
     acc_list = []
-    search_best_val_acc = 0.0
     search_best_test_acc = 0.0
+    search_best_val_acc = 0.0
     search_best_settings = None
-    for f_dr in feat_drop_ratio_list:
-        for a_dr in attn_drop_ratio_list:
-            for e_dr in edge_drop_ratio_list:
-                for lr in lr_ratio_list:
-                    for dim in hid_dim_list:
-                        for layer in layer_num_list:
-                            args.learning_rate = lr
-                            args.feat_drop = f_dr
-                            args.attn_drop = a_dr
-                            args.edge_drop = e_dr
-                            args.layers = layer
-                            args.hidden_dim = dim
-                            # create model
-                            seed_everything(seed=args.seed)
-                            model = GDTEncoder(config=args)
-                            model.to(args.device)
-                            # ++++++++++++++++++++++++++++++++++++
-                            logging.info('Model Parameter Configuration:')
-                            for name, param in model.named_parameters():
-                                logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
-                                                                                          str(param.requires_grad)))
-                            logging.info('*' * 75)
-                            # ++++++++++++++++++++++++++++++++++++
-                            optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
-                            scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
-                                                                        num_training_steps=args.num_train_epochs)
+    seed_everything(seed=args.seed)
+    for _ in range(num_of_experiments):
+        args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
+                                                                    seed=args.seed + 1)
+        # create model
+        seed_everything(seed=args.seed)
+        model = GDTEncoder(config=args)
+        model.to(args.device)
+        # ++++++++++++++++++++++++++++++++++++
+        logging.info('Model Parameter Configuration:')
+        for name, param in model.named_parameters():
+            logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
+                                                                      str(param.requires_grad)))
+        logging.info('*' * 75)
+        # ++++++++++++++++++++++++++++++++++++
+        optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+                                                    num_training_steps=args.num_train_epochs)
 
-                            test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
-                                                                                val_mask=val_mask, test_mask=test_mask,
-                                                                                features=features, labels=labels,
-                                                                                optimizer=optimizer, scheduler=scheduler,
-                                                                                args=args)
-                            acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
-                            logger.info('*' * 50)
-                            logger.info('{:.4f}\t{:.4f}\t{:.4f}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, e_dr,
-                                                                                                    test_acc, best_val_acc,
-                                                                                                    best_test_acc))
-                            logger.info('*' * 50)
-                            if search_best_val_acc < best_val_acc:
-                                search_best_val_acc = best_val_acc
-                                search_best_test_acc = best_test_acc
-                                search_best_settings = (f_dr, a_dr, lr, e_dr, dim, layer, test_acc, best_val_acc, best_test_acc)
-                            logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
-                                                                                                         search_best_val_acc))
-                            logger.info('*' * 30)
+        test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+                                                            val_mask=val_mask, test_mask=test_mask,
+                                                            features=features, labels=labels,
+                                                            optimizer=optimizer, scheduler=scheduler,
+                                                            args=args)
+        acc_list.append((hyper_setting_i, test_acc, best_val_acc, best_test_acc))
+        logger.info('*' * 50)
+        logger.info('{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(hyper_setting_i, test_acc, best_val_acc, best_test_acc))
+        logger.info('*' * 50)
+        if search_best_val_acc < best_val_acc:
+            search_best_val_acc = best_val_acc
+            search_best_test_acc = best_test_acc
+            search_best_settings = hyper_setting_i
+        logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
+                                                                                     search_best_val_acc))
+        logger.info('*' * 30)
     for _, setting_acc in enumerate(acc_list):
         print(_, setting_acc)
     print(search_best_test_acc)
