@@ -229,7 +229,7 @@ class RGDTLayer(nn.Module):
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
         self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
-        self.ff_layer_norm = layerNorm(self._out_ent_feats)
+        self.ff_layer_norm = batchNorm(self._out_ent_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -322,9 +322,9 @@ class RGDTLayer(nn.Module):
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
-                graph.srcdata['h'] = feat
+                graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
