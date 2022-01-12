@@ -118,8 +118,8 @@ def main(args):
 
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    edge_drop_ratio_list = [0.05, 0.1]
-    lr_ratio_list = [1e-4, 2e-4, 3e-4, 5e-4, 1e-3]
+    edge_drop_ratio_list = [0.0, 0.05, 0.1]
+    lr_ratio_list = [1e-4, 2e-4, 5e-4, 1e-3]
 
     acc_list = []
     search_best_test_acc = 0.0
@@ -160,7 +160,7 @@ def main(args):
                     if search_best_val_acc < best_val_acc:
                         search_best_val_acc = best_val_acc
                         search_best_test_acc = best_test_acc
-                        search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+                        search_best_settings = (f_dr, a_dr, lr, e_dr, test_acc, best_val_acc, best_test_acc)
                     logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
                                                                                                  search_best_val_acc))
                     logger.info('*' * 30)
