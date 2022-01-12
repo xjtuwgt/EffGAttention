@@ -1,7 +1,7 @@
 from codes.gdt_layers import GDTLayer, RGDTLayer
 from torch import nn
 from torch import Tensor
-from codes.gnn_utils import EmbeddingLayer, small_init_gain_v2
+from codes.gnn_utils import EmbeddingLayer
 import torch
 
 

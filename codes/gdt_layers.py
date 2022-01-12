@@ -192,6 +192,7 @@ class RGDTLayer(nn.Module):
                  negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual=True,
+                 degree_norm: bool = True,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
 
@@ -234,6 +235,7 @@ class RGDTLayer(nn.Module):
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.ppr_diff = ppr_diff
+        self._degree_norm = degree_norm
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -246,7 +248,7 @@ class RGDTLayer(nn.Module):
         The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
         The attention weights are using xavier initialization method.
         """
-        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
+        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
@@ -266,7 +268,16 @@ class RGDTLayer(nn.Module):
             feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat_head.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
+                feat_head = feat_head * head_norm
+                feat_tail = feat_tail * head_norm
+                feat_enti = feat_enti * head_norm
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
@@ -301,14 +312,21 @@ class RGDTLayer(nn.Module):
                 graph.edata['a'] = self.attn_drop(a_value)
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata['ft']
+                if self._degree_norm:
+                    degs = graph.in_degrees().float().clamp(min=1)
+                    tail_norm = torch.pow(degs, 0.5)
+                    shp = tail_norm.shape + (1,) * (rst.dim() - 1)
+                    tail_norm = torch.reshape(tail_norm, shp)
+                    rst = rst * tail_norm
             # residual
             if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
-                rst = self.feat_drop(rst) + resval
+                rst = rst + resval
+
             rst = rst.flatten(1)
             # +++++++++++++++++++++++++++++++++++++++
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = self.feat_drop(ff_rst) + rst  # residual
+            rst = ff_rst + rst  # residual
             # +++++++++++++++++++++++++++++++++++++++
             if get_attention:
                 return rst, graph.edata['a']
@@ -321,10 +339,26 @@ class RGDTLayer(nn.Module):
             feat_0 = graph.srcdata.pop('ft')
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
+
+                degs = graph.in_degrees().float().clamp(min=1)
+                tail_norm = torch.pow(degs, 0.5)
+                shp = tail_norm.shape + (1,) * (feat.dim() - 1)
+                tail_norm = torch.reshape(tail_norm, shp)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++
             for _ in range(self._hop_num):
+                if self._degree_norm and _ > 0:
+                    feat = feat * head_norm
                 graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
+                if self._degree_norm:
+                    feat = feat * tail_norm
                 feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
