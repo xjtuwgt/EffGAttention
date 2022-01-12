@@ -87,13 +87,13 @@ class GDTLayer(nn.Module):
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self._degree_norm:
-                degs = graph.out_degrees().float().clamp(min=1)
-                norm = torch.pow(degs, -0.5)
-                shp = norm.shape + (1,) * (feat_head.dim() - 1)
-                norm = torch.reshape(norm, shp)
-                feat_head = feat_head * norm
-                feat_tail = feat_tail * norm
-                feat_enti = feat_enti * norm
+                head_norm = torch.pow(
+                    graph.out_degrees().float().clamp(min=1), -0.5)
+                shp = head_norm.shape + (1,) * (feat.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp).to(feat.device)
+                feat_head = feat_head * head_norm
+                feat_tail = feat_tail * head_norm
+                feat_enti = feat_enti * head_norm
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
@@ -122,13 +122,12 @@ class GDTLayer(nn.Module):
                 # # message passing
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata.pop('ft')
-
-            if self._degree_norm:
-                degs = graph.in_degrees().float().clamp(min=1)
-                norm = torch.pow(degs, 0.5)
-                shp = norm.shape + (1,) * (rst.dim() - 1)
-                norm = torch.reshape(norm, shp)
-                rst = rst * norm
+                if self._degree_norm:
+                    tail_norm = torch.pow(
+                        graph.in_degrees().float().clamp(min=1), -0.5)
+                    shp = tail_norm.shape + (1,) * (feat.dim() - 1)
+                    tail_norm = torch.reshape(tail_norm, shp).to(feat.device)
+                    rst = rst * tail_norm
 
             # residual
             if self.res_fc is not None:
@@ -151,11 +150,27 @@ class GDTLayer(nn.Module):
             feat_0 = graph.srcdata.pop('ft')
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                head_norm = torch.pow(
+                    graph.out_degrees().float().clamp(min=1), -0.5)
+                shp = head_norm.shape + (1,) * (feat.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp).to(feat.device)
+
+                tail_norm = torch.pow(
+                    graph.in_degrees().float().clamp(min=1), -0.5)
+                shp = tail_norm.shape + (1,) * (feat.dim() - 1)
+                tail_norm = torch.reshape(tail_norm, shp).to(feat.device)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++
             for _ in range(self._hop_num):
+                if self._degree_norm and _ > 0:
+                    feat = feat * head_norm
                 graph.srcdata['h'] = self.feat_drop(feat)
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
+                if self._degree_norm:
+                    feat = feat * tail_norm
                 feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
             return feat
 
