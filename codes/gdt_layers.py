@@ -87,10 +87,10 @@ class GDTLayer(nn.Module):
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self._degree_norm:
-                head_norm = torch.pow(
-                    graph.out_degrees().float().clamp(min=1), -0.5)
-                shp = head_norm.shape + (1,) * (feat.dim() - 1)
-                head_norm = torch.reshape(head_norm, shp).to(feat.device)
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat_head.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
                 feat_head = feat_head * head_norm
                 feat_tail = feat_tail * head_norm
                 feat_enti = feat_enti * head_norm
@@ -123,10 +123,10 @@ class GDTLayer(nn.Module):
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata.pop('ft')
                 if self._degree_norm:
-                    tail_norm = torch.pow(
-                        graph.in_degrees().float().clamp(min=1), -0.5)
-                    shp = tail_norm.shape + (1,) * (feat.dim() - 1)
-                    tail_norm = torch.reshape(tail_norm, shp).to(feat.device)
+                    degs = graph.in_degrees().float().clamp(min=1)
+                    tail_norm = torch.pow(degs, 0.5)
+                    shp = tail_norm.shape + (1,) * (rst.dim() - 1)
+                    tail_norm = torch.reshape(tail_norm, shp)
                     rst = rst * tail_norm
 
             # residual
@@ -152,15 +152,15 @@ class GDTLayer(nn.Module):
             attentions = graph.edata.pop('a')
             #+++++++++++++++++++++++++++++++++++++++++++++++++++
             if self._degree_norm:
-                head_norm = torch.pow(
-                    graph.out_degrees().float().clamp(min=1), -0.5)
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
                 shp = head_norm.shape + (1,) * (feat.dim() - 1)
-                head_norm = torch.reshape(head_norm, shp).to(feat.device)
+                head_norm = torch.reshape(head_norm, shp)
 
-                tail_norm = torch.pow(
-                    graph.in_degrees().float().clamp(min=1), -0.5)
+                degs = graph.in_degrees().float().clamp(min=1)
+                tail_norm = torch.pow(degs, 0.5)
                 shp = tail_norm.shape + (1,) * (feat.dim() - 1)
-                tail_norm = torch.reshape(tail_norm, shp).to(feat.device)
+                tail_norm = torch.reshape(tail_norm, shp)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++
             for _ in range(self._hop_num):
                 if self._degree_norm and _ > 0:
