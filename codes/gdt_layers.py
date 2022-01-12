@@ -199,8 +199,7 @@ class RGDTLayer(nn.Module):
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
 
-        self.attn_e = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
 
         if residual:
@@ -235,8 +234,7 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
-        nn.init.xavier_normal_(self.attn_e, gain=gain)
-        nn.init.xavier_normal_(self.attn_r, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
@@ -255,19 +253,18 @@ class RGDTLayer(nn.Module):
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
-            e_e = (e * self.attn_e).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             in_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
             feat_rel = self.attn_activation(feat_rel)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             edge_ids = graph.edata['rid']
-            er = er[edge_ids]
+            feat_rel = feat_rel[edge_ids]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            e = e_e + er
+            edge_score = graph.edata.pop('e') * feat_rel
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            e = self.attn_activation(edge_score)  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e')/self._head_dim)
