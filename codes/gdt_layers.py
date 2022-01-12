@@ -158,7 +158,7 @@ class GDTLayer(nn.Module):
                 head_norm = torch.reshape(head_norm, shp)
 
                 degs = graph.in_degrees().float().clamp(min=1)
-                tail_norm = torch.pow(degs, -0.5)
+                tail_norm = torch.pow(degs, 0.5)
                 shp = tail_norm.shape + (1,) * (feat.dim() - 1)
                 tail_norm = torch.reshape(tail_norm, shp)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++
