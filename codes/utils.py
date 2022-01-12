@@ -28,16 +28,16 @@ def rand_search_parameter(space: dict):
         return space['value']
     if para_type == 'choice':
         candidates = space['values']
-        value = random.choice(candidates, 1).tolist()[0]
+        value = np.random.choice(candidates, 1).tolist()[0]
         return value
     if para_type == 'range':
         log_scale = space.get('log_scale', False)
         low, high = space['bounds']
         if log_scale:
-            value = random.uniform(low=np.log(low), high=np.log(high), size=1)[0]
+            value = np.random.uniform(low=np.log(low), high=np.log(high), size=1)[0]
             value = np.exp(value)
         else:
-            value = random.uniform(low=low, high=high, size=1)[0]
+            value = np.random.uniform(low=low, high=high, size=1)[0]
         return value
     else:
         raise ValueError('Training batch mode %s not supported' % para_type)
