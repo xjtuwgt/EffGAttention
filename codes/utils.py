@@ -50,8 +50,8 @@ def Citation_HypeParameterSpace():
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': [0.0, 0.05, 0.1, 0.15]}
     hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [4, 5, 6, 7, 8, 9, 10]}
     alpha = {'name': 'alpha', 'type': 'choice', 'values': [0.05, 0.1, 0.15]}
-    hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [64, 128, 256]}
-    layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [2, 3]}
+    hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [256, 512]}
+    layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [3, 6]}
     # ++++++++++++++++++++++++++++++++++
     search_space = [learning_rate, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio, hidden_dim, hop_num, alpha,
                     layer_num]
