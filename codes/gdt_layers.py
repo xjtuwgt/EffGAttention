@@ -40,7 +40,6 @@ class GDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.fc_out = nn.Linear(self._head_dim * self._num_heads, self._head_dim * self._num_heads, bias=False)
         self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
 
         self.feat_drop = nn.Dropout(feat_drop)
@@ -67,11 +66,9 @@ class GDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
-        nn.init.xavier_normal_(self.fc_out.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
-        gain = small_init_gain(d_in=self._out_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
-        nn.init.xavier_normal_(self.attn, gain=gain)
 
     def forward(self, graph, feat, get_attention=False):
         with graph.local_scope():
@@ -133,10 +130,10 @@ class GDTLayer(nn.Module):
                     tail_norm = torch.reshape(tail_norm, shp)
                     rst = rst * tail_norm
             # residual
-            rst = self.fc_out(self.feat_drop(rst.flatten(1)))
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
-                rst = rst + self.res_fc(feat)
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                rst = rst + resval
 
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
