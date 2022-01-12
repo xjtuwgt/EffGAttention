@@ -260,14 +260,14 @@ class RGDTLayer(nn.Module):
             edge_ids = graph.edata['rid']
             feat_rel = feat_rel[edge_ids]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            edge_score = graph.edata.pop('e') * feat_rel
+            edge_dismult = graph.edata.pop('e') * feat_rel
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            e = self.attn_activation(edge_score)  # (num_src_edge, num_heads, head_dim)
+            e = self.attn_activation(edge_dismult)  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
+            # graph.edata.update({'e': e})
+            # graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            # e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
