@@ -7,6 +7,7 @@ from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
+from codes.utils import seed_everything
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -138,6 +139,7 @@ def main(args):
                             args.layers = layer
                             args.hidden_dim = dim
                             # create model
+                            seed_everything(seed=args.seed)
                             model = GDTEncoder(config=args)
                             model.to(args.device)
                             # ++++++++++++++++++++++++++++++++++++

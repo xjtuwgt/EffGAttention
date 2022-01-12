@@ -143,7 +143,7 @@ class PositionWiseFeedForward(nn.Module):
         self.init()
 
     def forward(self, x):
-        return self.w_2(self.dropout(F.relu(self.w_1(x))))
+        return self.w_2(self.dropout(F.gelu(self.w_1(x))))
 
     def init(self):
         gain = small_init_gain(d_in=self.hidden_dim, d_out=self.model_dim) / math.sqrt(self.layer_num)
