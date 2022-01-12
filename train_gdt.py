@@ -117,8 +117,8 @@ def main(args):
 
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.1).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.1).tolist()
-    hid_dim_list = [256]
-    layer_num_list = [3]
+    hid_dim_list = [64]
+    layer_num_list = [2]
     edge_drop_ratio_list = [0.0, 0.05, 0.1]
     lr_ratio_list = [5e-4, 1e-3, 2e-3]
 
