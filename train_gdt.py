@@ -116,8 +116,8 @@ def main(args):
 
     feat_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
     attn_drop_ratio_list = np.arange(0.3, 0.51, 0.05).tolist()
-    edge_drop_ratio_list = [0.05, 0.1]
-    lr_ratio_list = [1e-4, 2e-4, 3e-4, 5e-4, 1e-3]
+    edge_drop_ratio_list = [0.0, 0.05]
+    lr_ratio_list = [1e-4, 5e-4, 1e-3]
 
     acc_list = []
     search_best_val_acc = 0.0
