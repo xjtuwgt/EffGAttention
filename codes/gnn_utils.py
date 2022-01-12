@@ -5,7 +5,6 @@ import torch
 import dgl.function as fn
 from torch import nn
 import torch.nn.functional as F
-import torch.nn.init as INIT
 from dgl.nn.pytorch.utils import Identity
 from torch import Tensor, LongTensor
 
@@ -180,9 +179,9 @@ class EmbeddingLayer(nn.Module):
         """Initializing the embeddings.
         """
         gain = small_init_gain(d_in=self.dim, d_out=self.dim)
-        INIT.xavier_normal_(self.embedding.weight, gain=gain)
+        nn.init.xavier_normal_(self.embedding.weight, gain=gain)
         if isinstance(self.projection, nn.Linear):
-            INIT.xavier_normal_(self.projection.weight, gain=gain)
+            nn.init.xavier_normal_(self.projection.weight, gain=gain)
 
     def _embed(self, embeddings):
         embeddings = self.projection(embeddings)
