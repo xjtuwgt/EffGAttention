@@ -256,9 +256,7 @@ class RGDTLayer(nn.Module):
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
             e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
-            e = (e * self.attn_e).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e_e = (e * self.attn_e).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             in_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
@@ -269,7 +267,11 @@ class RGDTLayer(nn.Module):
             edge_ids = graph.edata['rid']
             er = er[edge_ids]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            e = ((graph.edata.pop('e')/self._head_dim) + er)
+            e = e_e + er
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = (graph.edata.pop('e')/self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.sparse_mode != 'no_sparse':
                 a_score = edge_softmax(graph, e)
                 a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
