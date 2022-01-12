@@ -128,7 +128,6 @@ class GDTLayer(nn.Module):
                     shp = tail_norm.shape + (1,) * (rst.dim() - 1)
                     tail_norm = torch.reshape(tail_norm, shp)
                     rst = rst * tail_norm
-
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)

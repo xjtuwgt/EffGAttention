@@ -59,7 +59,8 @@ def Citation_HypeParameterSpace():
     return search_space
 
 
-def single_task_trial(search_space: dict, rand_seed=42):
+def single_task_trial(search_space: dict, rand_seed: int):
+    seed_everything(seed=rand_seed)
     parameter_dict = {}
     for key, value in search_space.items():
         parameter_dict[key] = rand_search_parameter(value)
