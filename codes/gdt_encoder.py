@@ -15,12 +15,10 @@ class GDTEncoder(nn.Module):
                                                   num_heads=self.config.head_num,
                                                   hop_num=self.config.gnn_hop_num,
                                                   alpha=self.config.alpha,
-                                                  top_k=self.config.top_k,
-                                                  top_p=self.config.top_p,
-                                                  sparse_mode=self.config.sparse_mode,
                                                   layer_num=self.config.layers,
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
+                                                  edge_drop=self.config.edge_drop,
                                                   negative_slope=self.config.negative_slope,
                                                   residual=self.config.residual,
                                                   ppr_diff=self.config.ppr_diff))
@@ -31,9 +29,7 @@ class GDTEncoder(nn.Module):
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,
                                                       alpha=self.config.alpha,
-                                                      top_k=self.config.top_k,
-                                                      top_p=self.config.top_p,
-                                                      sparse_mode=self.config.sparse_mode,
+                                                      edge_drop=self.config.edge_drop,
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
@@ -47,14 +43,9 @@ class GDTEncoder(nn.Module):
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
         nn.init.xavier_normal_(self.classifier.weight, gain=gain)
-        if self.feature_map:
-            nn.init.xavier_normal_(self.feature_map.weight, gain=gain)
 
     def forward(self, graph, inputs: Tensor):
-        if self.central_emb_layer:
-            h = self.feature_map(inputs) + self.central_emb_layer(graph.in_degrees().long())
-        else:
-            h = inputs
+        h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
         logits = self.classifier(h)
@@ -83,12 +74,10 @@ class RGDTEncoder(nn.Module):
                                                    num_heads=self.config.head_num,
                                                    hop_num=self.config.gnn_hop_num,
                                                    alpha=self.config.alpha,
-                                                   top_k=self.config.top_k,
-                                                   top_p=self.config.top_p,
-                                                   sparse_mode=self.config.sparse_mode,
                                                    layer_num=self.config.layers,
                                                    feat_drop=self.config.feat_drop,
                                                    attn_drop=self.config.attn_drop,
+                                                   edge_drop=self.config.edge_drop,
                                                    negative_slope=self.config.negative_slope,
                                                    residual=self.config.residual,
                                                    ppr_diff=self.config.ppr_diff))
@@ -99,12 +88,10 @@ class RGDTEncoder(nn.Module):
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,
                                                       alpha=self.config.alpha,
-                                                      top_k=self.config.top_k,
-                                                      top_p=self.config.top_p,
-                                                      sparse_mode=self.config.sparse_mode,
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
+                                                      edge_drop=self.config.edge_drop,
                                                       negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))

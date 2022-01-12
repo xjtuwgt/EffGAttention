@@ -91,6 +91,7 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--feat_drop', type=float, default=0.55)
     parser.add_argument('--attn_drop', type=float, default=0.45)
+    parser.add_argument('--edge_drop', type=float, default=0.1)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
     parser.add_argument('--stanford', type=boolean_string, default='false')
@@ -102,9 +103,6 @@ def default_parser():
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=2)
     parser.add_argument('--negative_slope', type=float, default=0.2)
-    parser.add_argument('--top_p', type=float, default=0.8)
-    parser.add_argument('--top_k', type=int, default=8)
-    parser.add_argument('--sparse_mode', type=str, default='no_sparse', choices=['top_k', 'top_p', 'no_sparse'])
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--eval_batch_size', type=int, default=32)
     parser.add_argument('--per_gpu_pretrain_batch_size', type=int, default=16)

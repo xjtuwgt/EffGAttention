@@ -19,22 +19,16 @@ class GDTLayer(nn.Module):
                  num_heads: int,
                  hop_num: int = 5,
                  alpha: float = 0.1,
-                 top_k: int = 5,
-                 top_p: float = 0.75,
-                 sparse_mode: str = 'top_k',
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
+                 edge_drop: float = 0.1,
                  negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual: bool = True,
                  ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
 
-        self.sparse_mode = sparse_mode
-        self._top_k, self._top_p = top_k, top_p
-        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
         self.layer_num = layer_num
-
         self._hop_num = hop_num
         self._alpha = alpha
         self._num_heads = num_heads
@@ -49,6 +43,7 @@ class GDTLayer(nn.Module):
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
+        self.edge_drop = edge_drop
         self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
         if residual:
             if self._in_tail_feats != self._out_feats:
@@ -99,29 +94,24 @@ class GDTLayer(nn.Module):
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            if self.sparse_mode != 'no_sparse':
-                a_score = edge_softmax(graph, e)
-                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
-                                                     sparse_mode=self.sparse_mode)
-                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
-                                                top_k_sum=a_top_sum)
-                if self.ppr_diff:
-                    graph.edata['a'] = a_n
-                    rst = self.ppr_estimation(graph=graph)
-                else:
-                    graph.edata['a'] = self.attn_drop(a_n)
-                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                    rst = graph.dstdata.pop('ft')
+            if self.training and self.edge_drop > 0:
+                perm = torch.randperm(graph.number_of_edges(), device=e.device)
+                bound = int(graph.number_of_edges() * self.edge_drop)
+                eids = perm[bound:]
+                a_value = torch.zeros_like(e)
+                a_value[eids] = edge_softmax(graph, e[eids], eids=eids)
             else:
-                # compute softmax
-                if self.ppr_diff:
-                    graph.edata['a'] = edge_softmax(graph, e)
-                    rst = self.ppr_estimation(graph=graph)
-                else:
-                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)
-                    # # message passing
-                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                    rst = graph.dstdata.pop('ft')
+                a_value = edge_softmax(graph, e)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # compute softmax
+            if self.ppr_diff:
+                graph.edata['a'] = a_value
+                rst = self.ppr_estimation(graph=graph)
+            else:
+                graph.edata['a'] = self.attn_drop(a_value)
+                # # message passing
+                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                rst = graph.dstdata.pop('ft')
 
             # residual
             if self.res_fc is not None:
@@ -163,23 +153,17 @@ class RGDTLayer(nn.Module):
                  out_ent_feats: int,
                  num_heads: int,
                  hop_num: int,
-                 top_k: int = 5,
-                 top_p: float = 0.75,
-                 sparse_mode: str = 'top_k',
                  alpha: float = 0.1,
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
+                 edge_drop: float = 0.1,
                  negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual=True,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
 
-        self.sparse_mode = sparse_mode
-        self._top_k, self._top_p = top_k, top_p
-        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
         self.layer_num = layer_num
-
         self._in_ent_feats = in_ent_feats
         self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
         self._out_ent_feats = out_ent_feats
@@ -198,6 +182,7 @@ class RGDTLayer(nn.Module):
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
+        self.edge_drop = edge_drop
 
         self.attn = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
@@ -268,27 +253,22 @@ class RGDTLayer(nn.Module):
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            if self.sparse_mode != 'no_sparse':
-                a_score = edge_softmax(graph, e)
-                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
-                                                     sparse_mode=self.sparse_mode)
-                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
-                                                top_k_sum=a_top_sum)
-                if self.ppr_diff:
-                    graph.edata['a'] = a_n
-                    rst = self.ppr_estimation(graph=graph)
-                else:
-                    graph.edata['a'] = self.attn_drop(a_n)
-                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                    rst = graph.dstdata.pop('ft')
+            if self.training and self.edge_drop > 0:
+                perm = torch.randperm(graph.number_of_edges(), device=e.device)
+                bound = int(graph.number_of_edges() * self.edge_drop)
+                eids = perm[bound:]
+                a_value = torch.zeros_like(e)
+                a_value[eids] = edge_softmax(graph, e[eids], eids=eids)
             else:
-                if self.ppr_diff:
-                    graph.edata['a'] = edge_softmax(graph, e)
-                    rst = self.ppr_estimation(graph=graph)
-                else:
-                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))
-                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                    rst = graph.dstdata['ft']
+                a_value = edge_softmax(graph, e)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.ppr_diff:
+                graph.edata['a'] = a_value
+                rst = self.ppr_estimation(graph=graph)
+            else:
+                graph.edata['a'] = self.attn_drop(a_value)
+                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                rst = graph.dstdata['ft']
             # residual
             if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
