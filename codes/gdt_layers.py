@@ -256,7 +256,6 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             in_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
-            feat_rel = self.attn_activation(feat_rel)
             edge_ids = graph.edata['rid']
             feat_rel = feat_rel[edge_ids]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
