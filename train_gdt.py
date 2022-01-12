@@ -122,7 +122,6 @@ def main(args):
     search_best_test_acc = 0.0
     search_best_val_acc = 0.0
     search_best_settings = None
-    seed_everything(seed=args.seed)
     for _ in range(num_of_experiments):
         args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
                                                                     seed=args.seed + 1)
