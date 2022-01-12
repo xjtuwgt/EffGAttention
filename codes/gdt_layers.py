@@ -24,6 +24,7 @@ class GDTLayer(nn.Module):
                  negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual: bool = True,
+                 degree_norm: bool = True,
                  ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
 
@@ -56,6 +57,7 @@ class GDTLayer(nn.Module):
         self.ff_layer_norm = layerNorm(self._out_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
+        self._degree_norm = degree_norm
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -84,6 +86,15 @@ class GDTLayer(nn.Module):
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                norm = torch.pow(degs, -0.5)
+                shp = norm.shape + (1,) * (feat_head.dim() - 1)
+                norm = torch.reshape(norm, shp)
+                feat_head = feat_head * norm
+                feat_tail = feat_tail * norm
+                feat_enti = feat_enti * norm
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
@@ -111,6 +122,13 @@ class GDTLayer(nn.Module):
                 # # message passing
                 graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
                 rst = graph.dstdata.pop('ft')
+
+            if self._degree_norm:
+                degs = graph.in_degrees().float().clamp(min=1)
+                norm = torch.pow(degs, 0.5)
+                shp = norm.shape + (1,) * (rst.dim() - 1)
+                norm = torch.reshape(norm, shp)
+                rst = rst * norm
 
             # residual
             if self.res_fc is not None:

@@ -20,6 +20,7 @@ class GDTEncoder(nn.Module):
                                                   attn_drop=self.config.attn_drop,
                                                   edge_drop=self.config.edge_drop,
                                                   negative_slope=self.config.negative_slope,
+                                                  degree_norm=self.config.degree_norm,
                                                   residual=self.config.residual,
                                                   ppr_diff=self.config.ppr_diff))
 
@@ -33,6 +34,7 @@ class GDTEncoder(nn.Module):
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
+                                                      degree_norm=self.config.degree_norm,
                                                       negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
@@ -93,6 +95,7 @@ class RGDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       edge_drop=self.config.edge_drop,
                                                       negative_slope=self.config.negative_slope,
+                                                      degree_norm=self.config.degree_norm,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.drop_out = nn.Dropout(self.config.out_drop)
