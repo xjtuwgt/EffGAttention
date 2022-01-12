@@ -5,6 +5,7 @@ from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
+from torch.nn import BatchNorm1d as batchNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionWiseFeedForward, small_init_gain, small_init_gain_v2
@@ -54,7 +55,7 @@ class GDTLayer(nn.Module):
             self.register_buffer('res_fc', None)
 
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
-        self.ff_layer_norm = layerNorm(self._out_feats)
+        self.ff_layer_norm = batchNorm(self._out_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
         self._degree_norm = degree_norm
