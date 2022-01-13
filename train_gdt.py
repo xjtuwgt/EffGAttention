@@ -4,11 +4,11 @@ import torch
 from codes.gdt_encoder import GDTEncoder
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
 from codes.utils import seed_everything
-from codes.utils import Citation_HypeParameterSpace, citation_random_search_hyper_tunner
+from codes.utils import citation_hyper_parameter_space, citation_random_search_hyper_tunner
 
 logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
                     datefmt='%m/%d/%Y %H:%M:%S',
@@ -117,7 +117,7 @@ def main(args):
            test_mask.int().sum().item()))
 
     num_of_experiments = 10
-    hyper_search_space = Citation_HypeParameterSpace()
+    hyper_search_space = citation_hyper_parameter_space()
     acc_list = []
     search_best_test_acc = 0.0
     search_best_val_acc = 0.0
