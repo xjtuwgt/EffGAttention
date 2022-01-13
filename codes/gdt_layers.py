@@ -170,9 +170,7 @@ class RGDTLayer(nn.Module):
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
 
-        self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
         self.attn_activation = nn.PReLU()  # for attention computation
 
         if residual:
@@ -188,6 +186,7 @@ class RGDTLayer(nn.Module):
         self.edge_drop = edge_drop
 
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
+        self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
         self.ff_layer_norm = layerNorm(self._out_ent_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
@@ -210,6 +209,7 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
@@ -227,17 +227,20 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             feat_rel = self.fc_rel(self.feat_drop(rel_feat)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
-            et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
-            er = er[graph.edata['rid']]
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.srcdata.update({'eh': eh, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
-            graph.dstdata.update({'et': et})
-            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
-            e = self.attn_activation(graph.edata.pop('e') + er)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            feat_rel_norm = self.graph_layer_rel_norm(feat_rel)
+            feat_rel = self.fc_rel(self.feat_drop(feat_rel_norm)).view(-1, self._num_heads, self._head_dim)
+            edge_ids = graph.edata['rid']
+            feat_rel = feat_rel[edge_ids]
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            edge_dismult = graph.edata.pop('e') * feat_rel
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            e = self.attn_activation(edge_dismult)  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
                 bound = int(graph.number_of_edges() * self.edge_drop)
