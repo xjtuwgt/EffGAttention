@@ -68,6 +68,7 @@ def complete_default_parser(args):
 
 def default_parser():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--exp_number", type=int, default=1, help='number of exps for parameter tuning')
     parser.add_argument("--exp_name", type=str, default=None,
                         help="If set, this will be used as directory name in OUTOUT folder")
     parser.add_argument("--config_file",

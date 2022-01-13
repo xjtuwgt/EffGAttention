@@ -116,7 +116,7 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    num_of_experiments = 10
+    num_of_experiments = args.exp_number
     hyper_search_space = citation_hyper_parameter_space()
     acc_list = []
     search_best_test_acc = 0.0
