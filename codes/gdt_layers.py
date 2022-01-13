@@ -211,7 +211,6 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
-        nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
