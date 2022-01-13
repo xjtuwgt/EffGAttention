@@ -50,11 +50,11 @@ def rand_search_parameter(space: dict):
 def citation_hyper_parameter_space():
     learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 3e-4, 1e-3, 2e-3, 5e-3]}
     weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [1e-4, 5e-4]}
-    attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': list(np.arange(0.25, 0.65, 0.025))}
-    feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'range', 'bounds': list(np.arange(0.25, 0.65, 0.025))}
-    edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'range', 'bounds': list(np.arange(0.05, 0.26, 0.025))}
+    attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.25, 0.65, 0.025))}
+    feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.25, 0.65, 0.025))}
+    edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.05, 0.26, 0.025))}
     hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [6, 7, 8]}
-    alpha = {'name': 'alpha', 'type': 'range', 'bounds': list(np.arange(0.05, 0.21, 0.025))}
+    alpha = {'name': 'alpha', 'type': 'choice', 'values': list(np.arange(0.05, 0.21, 0.025))}
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [64]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [2]}
     # ++++++++++++++++++++++++++++++++++
