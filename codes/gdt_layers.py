@@ -233,8 +233,7 @@ class RGDTLayer(nn.Module):
             et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
-            edge_ids = graph.edata['rid']
-            er = er[edge_ids]
+            er = er[graph.edata['rid']]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': eh, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': et})
