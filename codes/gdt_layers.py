@@ -188,7 +188,6 @@ class RGDTLayer(nn.Module):
         self.edge_drop = edge_drop
 
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
-        self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
         self.ff_layer_norm = layerNorm(self._out_ent_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
@@ -226,8 +225,7 @@ class RGDTLayer(nn.Module):
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            in_rel_norm = self.graph_layer_rel_norm(rel_feat)
-            feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_rel = self.fc_rel(self.feat_drop(rel_feat)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
             et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)

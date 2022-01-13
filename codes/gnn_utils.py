@@ -180,9 +180,9 @@ class EmbeddingLayer(nn.Module):
         """Initializing the embeddings.
         """
         gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.embedding.weight, gain=0.01)
+        nn.init.xavier_normal_(self.embedding.weight, gain=gain)
         if isinstance(self.projection, nn.Linear):
-            nn.init.xavier_normal_(self.projection.weight, gain=0.01)
+            nn.init.xavier_normal_(self.projection.weight, gain=gain)
 
     def _embed(self, embeddings):
         embeddings = self.projection(embeddings)
