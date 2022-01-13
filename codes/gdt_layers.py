@@ -225,13 +225,11 @@ class RGDTLayer(nn.Module):
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            feat_rel = self.fc_rel(self.feat_drop(rel_feat)).view(-1, self._num_heads, self._head_dim)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            feat_rel_norm = self.graph_layer_rel_norm(feat_rel)
+            feat_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(feat_rel_norm)).view(-1, self._num_heads, self._head_dim)
             edge_ids = graph.edata['rid']
             feat_rel = feat_rel[edge_ids]
