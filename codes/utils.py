@@ -46,12 +46,12 @@ def rand_search_parameter(space: dict):
 def Citation_HypeParameterSpace():
     learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3]}
     weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [5e-4, 5e-5]}
-    attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
+    attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.5]}
     feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
-    edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'range', 'bounds': [0.05, 0.3]}
-    hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [4, 6, 8]}
+    edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'range', 'bounds': [0.05, 0.25]}
+    hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [6, 7, 8, 9]}
     alpha = {'name': 'alpha', 'type': 'range', 'bounds': [0.05, 0.15]}
-    hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [256]}
+    hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [128]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [3]}
     # ++++++++++++++++++++++++++++++++++
     search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio,
