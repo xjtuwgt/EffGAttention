@@ -49,7 +49,7 @@ def Citation_HypeParameterSpace():
     attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.5]}
     feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'range', 'bounds': [0.05, 0.25]}
-    hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [6, 7, 8, 9]}
+    hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [6, 7, 8]}
     alpha = {'name': 'alpha', 'type': 'range', 'bounds': [0.05, 0.15]}
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [256]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [6]}
