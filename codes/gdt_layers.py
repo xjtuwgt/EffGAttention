@@ -21,7 +21,6 @@ class GDTLayer(nn.Module):
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
-                 negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual: bool = True,
                  ppr_diff: bool = True):
@@ -38,12 +37,10 @@ class GDTLayer(nn.Module):
         self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
-        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
 
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
         self.edge_drop = edge_drop
-        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
         if residual:
             if self._in_tail_feats != self._out_feats:
                 self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
@@ -63,7 +60,6 @@ class GDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
-        nn.init.xavier_normal_(self.attn, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
@@ -86,13 +82,10 @@ class GDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
-            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            graph.apply_edges(fn.u_dot_v('eh', 'et', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
+            e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
@@ -155,7 +148,6 @@ class RGDTLayer(nn.Module):
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
-                 negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual=True,
                  ppr_diff=True):
@@ -178,12 +170,10 @@ class RGDTLayer(nn.Module):
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
 
-        self.feat_drop = nn.Dropout(feat_drop)
-        self.attn_drop = nn.Dropout(attn_drop)
-        self.edge_drop = edge_drop
-
-        self.attn = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
-        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
+        self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_activation = nn.PReLU()  # for attention computation
 
         if residual:
             if in_ent_feats != out_ent_feats:
@@ -193,6 +183,10 @@ class RGDTLayer(nn.Module):
         else:
             self.register_buffer('res_fc_ent', None)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.edge_drop = edge_drop
+
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
         self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
         self.ff_layer_norm = layerNorm(self._out_ent_feats)
@@ -233,22 +227,20 @@ class RGDTLayer(nn.Module):
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
-            graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             in_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
-            edge_ids = graph.edata['rid']
-            feat_rel = feat_rel[edge_ids]
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            edge_dismult = graph.edata.pop('e') * feat_rel
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            e = (edge_dismult * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = self.attn_activation(graph.edata.pop('e')/self._head_dim)
+            eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
+            et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
+            edge_ids = graph.edata['rid']
+            er = er[edge_ids]
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': eh, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': et})
+            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e') + er)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
