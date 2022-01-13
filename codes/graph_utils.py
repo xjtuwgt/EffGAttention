@@ -65,3 +65,8 @@ def k_hop_graph_edge_collection(graph: DGLHeteroGraph, hop_num: int = 5):
         else:
             break
     return k_hop_graph_edge_dict
+
+
+def graph_to_triples(graph: DGLHeteroGraph, edge_rel_name: str = None):
+
+    return
