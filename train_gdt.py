@@ -2,7 +2,7 @@ import numpy as np
 import time
 import torch
 from codes.gdt_encoder import GDTEncoder
-from torch.optim import AdamW
+from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
 from transformers.optimization import get_cosine_schedule_with_warmup
@@ -136,7 +136,7 @@ def main(args):
                                                                       str(param.requires_grad)))
         logging.info('*' * 75)
         # ++++++++++++++++++++++++++++++++++++
-        optimizer = AdamW(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
         scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                     num_training_steps=args.num_train_epochs)
 
