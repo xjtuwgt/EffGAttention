@@ -5,10 +5,9 @@ from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
-from torch.nn import BatchNorm1d as batchNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
-from codes.gnn_utils import PositionWiseFeedForward, small_init_gain, small_init_gain_v2
+from codes.gnn_utils import PositionWiseFeedForward, small_init_gain
 from torch import Tensor
 
 
@@ -54,7 +53,7 @@ class GDTLayer(nn.Module):
             self.register_buffer('res_fc', None)
 
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
-        self.ff_layer_norm = batchNorm(self._out_feats)
+        self.ff_layer_norm = layerNorm(self._out_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
         self.ppr_diff = ppr_diff
         self.reset_parameters()
@@ -90,9 +89,6 @@ class GDTLayer(nn.Module):
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
             e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
@@ -159,7 +155,6 @@ class RGDTLayer(nn.Module):
                  negative_slope: float = 0.2,
                  layer_num: int = 1,
                  residual=True,
-                 degree_norm: bool = True,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
 
@@ -197,7 +192,7 @@ class RGDTLayer(nn.Module):
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
         self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
-        self.ff_layer_norm = batchNorm(self._out_ent_feats)
+        self.ff_layer_norm = layerNorm(self._out_ent_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -248,10 +243,6 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             e = self.attn_activation(edge_dismult)  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
