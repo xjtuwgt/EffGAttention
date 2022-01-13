@@ -236,9 +236,9 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             e = graph.edata.pop('e') * feat_rel
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            # e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
-            # e = self.attn_activation(e)
-            e = e.sum(dim=-1).unsqueeze(dim=2)
+            graph.edata.update({'e': e.sum(dim=-1).unsqueeze(dim=2)})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
