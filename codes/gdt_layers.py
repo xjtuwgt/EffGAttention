@@ -90,10 +90,6 @@ class GDTLayer(nn.Module):
             e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
                 bound = int(graph.number_of_edges() * self.edge_drop)
@@ -116,10 +112,10 @@ class GDTLayer(nn.Module):
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
                 resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
-                rst = rst + resval
+                rst = self.feat_drop(rst) + resval
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = ff_rst + rst  # residual
+            rst = self.feat_drop(ff_rst) + rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
@@ -247,9 +243,6 @@ class RGDTLayer(nn.Module):
             e = self.attn_activation(edge_dismult)  # (num_src_edge, num_heads, head_dim)
             e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e})
-            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = (graph.edata.pop('e')/self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
