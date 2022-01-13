@@ -45,6 +45,7 @@ def rand_search_parameter(space: dict):
 
 def Citation_HypeParameterSpace():
     learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 5e-4]}
+    weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [1e-4, 2e-4, 5e-4]}
     attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
     feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': [0.0, 0.05]}
@@ -53,8 +54,8 @@ def Citation_HypeParameterSpace():
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [64]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [2]}
     # ++++++++++++++++++++++++++++++++++
-    search_space = [learning_rate, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio, hidden_dim, hop_num, alpha,
-                    layer_num]
+    search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio,
+                    hidden_dim, hop_num, alpha, layer_num]
     search_space = dict((x['name'], x) for x in search_space)
     return search_space
 
@@ -78,5 +79,6 @@ def citation_random_search_hyper_tunner(args, search_space: dict, seed: int):
     args.gnn_hop_num = parameter_dict['hop_num']
     args.alpha = parameter_dict['alpha']
     args.hidden_dim = parameter_dict['hidden_dim']
+    args.weight_decay = parameter_dict['weight_decay']
     args.seed = parameter_dict['seed']
     return args, parameter_dict
