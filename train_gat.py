@@ -224,11 +224,11 @@ if __name__ == '__main__':
                         help="number of hidden units")
     parser.add_argument("--residual", action="store_true", default=False,
                         help="use residual connection")
-    parser.add_argument("--in-drop", type=float, default=.25,
+    parser.add_argument("--in-drop", type=float, default=.5,
                         help="input feature dropout")
-    parser.add_argument("--attn-drop", type=float, default=.25,
+    parser.add_argument("--attn-drop", type=float, default=.5,
                         help="attention dropout")
-    parser.add_argument("--lr", type=float, default=0.0005,
+    parser.add_argument("--lr", type=float, default=0.005,
                         help="learning rate")
     parser.add_argument('--weight-decay', type=float, default=5e-4,
                         help="weight decay")

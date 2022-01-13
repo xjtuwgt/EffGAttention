@@ -116,7 +116,7 @@ def main(args):
            val_mask.int().sum().item(),
            test_mask.int().sum().item()))
 
-    num_of_experiments = 60
+    num_of_experiments = 10
     hyper_search_space = Citation_HypeParameterSpace()
     acc_list = []
     search_best_test_acc = 0.0
