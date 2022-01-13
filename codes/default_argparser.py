@@ -103,7 +103,7 @@ def default_parser():
     parser.add_argument('--hidden_dim', type=int, default=64)
     parser.add_argument('--head_num', type=int, default=8)
     parser.add_argument('--layers', type=int, default=2)
-    parser.add_argument('--negative_slope', type=float, default=0.25)
+    parser.add_argument('--negative_slope', type=float, default=0.2)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--eval_batch_size', type=int, default=32)
     parser.add_argument('--per_gpu_pretrain_batch_size', type=int, default=16)
@@ -122,7 +122,7 @@ def default_parser():
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
     parser.add_argument("--learning_rate", default=0.0002, type=float,
                         help="The initial learning rate for Adam.")
-    parser.add_argument("--weight_decay", default=1e-8, type=float,
+    parser.add_argument("--weight_decay", default=5e-4, type=float,
                         help="Weight deay if we apply some.")
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument("--fine_tuned_learning_rate", default=1e-5, type=float,
