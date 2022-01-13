@@ -36,12 +36,6 @@ class GDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-
-        if self.config.hidden_dim >= 256:
-            self.output_layer_norm = LayerNorm(self.config.hidden_dim)
-        else:
-            self.output_layer_norm = Identity()
-        self.output_drop = nn.Dropout(self.config.out_drop)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
@@ -53,7 +47,7 @@ class GDTEncoder(nn.Module):
         h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.output_drop(self.output_layer_norm(h)))
+        logits = self.classifier(h)
         return logits
 
 
@@ -98,11 +92,6 @@ class RGDTEncoder(nn.Module):
                                                       edge_drop=self.config.edge_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        if self.config.hidden_dim >= 256:
-            self.output_layer_norm = LayerNorm(self.config.hidden_dim)
-        else:
-            self.output_layer_norm = Identity()
-        self.output_drop = nn.Dropout(self.config.out_drop)
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
@@ -124,5 +113,5 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(self.output_dop(self.output_layer_norm(h)))
+        logits = self.classifier(h)
         return logits
