@@ -44,11 +44,11 @@ def rand_search_parameter(space: dict):
 
 
 def Citation_HypeParameterSpace():
-    learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 5e-4]}
+    learning_rate = {'name': 'learning_rate', 'type': 'range', 'values': [1e-5, 1e-3], 'log_scale': True}
     weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [5e-4]}
     attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
     feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
-    edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': [0.0, 0.05]}
+    edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': [0.05, 0.1]}
     hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [4, 6, 8]}
     alpha = {'name': 'alpha', 'type': 'range', 'bounds': [0.05, 0.2]}
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [64]}
