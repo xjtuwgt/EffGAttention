@@ -210,9 +210,10 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
-        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+        gain = small_init_gain(d_in=self._in_rel_feats, d_out=self._out_ent_feats) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
 
     def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
         with graph.local_scope():
