@@ -19,7 +19,6 @@ class GDTEncoder(nn.Module):
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
                                                   edge_drop=self.config.edge_drop,
-                                                  negative_slope=self.config.negative_slope,
                                                   residual=self.config.residual,
                                                   ppr_diff=self.config.ppr_diff))
 
@@ -33,7 +32,6 @@ class GDTEncoder(nn.Module):
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
-                                                      negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
@@ -77,7 +75,6 @@ class RGDTEncoder(nn.Module):
                                                    feat_drop=self.config.feat_drop,
                                                    attn_drop=self.config.attn_drop,
                                                    edge_drop=self.config.edge_drop,
-                                                   negative_slope=self.config.negative_slope,
                                                    residual=self.config.residual,
                                                    ppr_diff=self.config.ppr_diff))
 
@@ -91,7 +88,6 @@ class RGDTEncoder(nn.Module):
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
                                                       edge_drop=self.config.edge_drop,
-                                                      negative_slope=self.config.negative_slope,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.drop_out = nn.Dropout(self.config.out_drop)
