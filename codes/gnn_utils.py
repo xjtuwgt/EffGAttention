@@ -132,7 +132,7 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
 
 class PositionWiseFeedForward(nn.Module):
     "Implements FFN equation."
-    def __init__(self, model_dim, d_hidden, layer_num=1, dropout=0.1):
+    def __init__(self, model_dim, d_hidden, layer_num=1, dropout=0.25):
         super(PositionWiseFeedForward, self).__init__()
         self.model_dim = model_dim
         self.hidden_dim = d_hidden
