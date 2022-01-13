@@ -3,6 +3,7 @@ import os
 import torch
 import json
 import numpy as np
+from dgl import DGLHeteroGraph
 
 
 def set_logger(args):
@@ -68,6 +69,11 @@ def read_triple(file_path, entity2id, relation2id):
             h, r, t = line.strip().split('\t')
             triples.append((entity2id[h], relation2id[r], entity2id[t]))
     return triples
+
+
+def graph_to_triples(graph: DGLHeteroGraph, edge_rel_name: str = None):
+    src_nodes,
+    return
 
 
 def log_metrics(mode, step, metrics):
