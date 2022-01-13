@@ -48,8 +48,8 @@ def rand_search_parameter(space: dict):
 
 
 def citation_hyper_parameter_space():
-    learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3]}
-    weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [5e-4, 5e-5]}
+    learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-5, 2e-5, 5e-5, 1e-5, 2e-4, 5e-4]}
+    weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [1e-4, 5e-4]}
     attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.5]}
     feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'range', 'bounds': [0.3, 0.6]}
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'range', 'bounds': [0.05, 0.25]}

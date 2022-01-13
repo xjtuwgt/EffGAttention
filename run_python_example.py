@@ -1,6 +1,7 @@
 from torch.nn.modules.instancenorm import _InstanceNorm
 import torch.nn.functional as F
 from torch import Tensor
+import torch
 
 class InstanceNorm(_InstanceNorm):
     r"""Applies instance normalization over each individual example in a batch
@@ -44,21 +45,21 @@ class InstanceNorm(_InstanceNorm):
         return out.squeeze(0).t()
 
 
-from torch.nn import LayerNorm
-import torch
-from codes.utils import seed_everything
-print()
-seed_everything(seed=42)
-x = torch.randint(0, 100, (5,3)).float()
-insnorm = InstanceNorm(3)
-layerNorm = LayerNorm(3)
-
-y = insnorm(x)
-
-print(layerNorm(x))
-
-print(x)
-print(insnorm(layerNorm(x)))
+# from torch.nn import LayerNorm
+# import torch
+# from codes.utils import seed_everything
+# print()
+# seed_everything(seed=42)
+# x = torch.randint(0, 100, (5,3)).float()
+# insnorm = InstanceNorm(3)
+# layerNorm = LayerNorm(3)
+#
+# y = insnorm(x)
+#
+# print(layerNorm(x))
+#
+# print(x)
+# print(insnorm(layerNorm(x)))
 #
 # # x_mean = torch.mean(x, dim=2, keepdim=True)
 # # # print(x_mean)
@@ -70,9 +71,32 @@ print(insnorm(layerNorm(x)))
 # # print(x_norm)
 # print(x)
 # print(insnorm(x))
+from kge_codes.kge_utils import graph_to_triples, triple_train_valid_split
+from graph_data.citation_graph_data import citation_graph_reconstruction
 
-# import dgl
+import dgl
 # g = dgl.graph(([0, 1], [1, 2]))
+# g.edata['r_id'] = torch.randint(1, 9, (2,))
+#
+# x, y, z = g.edges(form='all')
+# print(x)
+# print(y)
+# print(z)
+#
+# a, b, c, d = graph_to_triples(graph=g, edge_rel_name='r_id')
+# print(a)
+# print(b)
+# print(c)
+# print(d)
+
+graph, n_entities, n_relations, n_classes, n_feats = citation_graph_reconstruction(dataset='cora')
+# print(graph)
+triples, _, _, relation2id = graph_to_triples(graph=graph, edge_rel_name='rid')
+print(triples.shape)
+
+triple_train_valid_split(triples=triples)
+
+# graph_to_triples()
 # g_2 = dgl.transform.khop_graph(g, 2)
 # print(g_2.edges())
 # g_2 = dgl.khop_graph(g=g, k=3)
