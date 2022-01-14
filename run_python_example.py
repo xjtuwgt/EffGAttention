@@ -122,7 +122,9 @@ import torch.nn.functional as F
     MLP Layer used after graph vector representation
 """
 
-
+x = torch.rand((3,4))
+y = torch.rand((3, 1))
+x
 # class MLPReadout(nn.Module):
 #     def __init__(self, input_dim, output_dim, L=2, dropout: float=0.1):  # L=nb_hidden_layers
 #         super().__init__()
