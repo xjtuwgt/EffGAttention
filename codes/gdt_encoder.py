@@ -84,7 +84,7 @@ class RGDTEncoder(nn.Module):
                                                    ppr_diff=self.config.ppr_diff))
 
         for _ in range(1, self.config.layers):
-            self.graph_encoder.append(module=GDTLayer(in_ent_feats= 2 * self.config.hidden_dim,
+            self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.hidden_dim,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,

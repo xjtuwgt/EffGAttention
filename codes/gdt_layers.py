@@ -186,10 +186,10 @@ class RGDTLayer(nn.Module):
 
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
         self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
-        self.ff_layer_norm = layerNorm(2 * self._num_heads * self._head_dim)
-        self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._num_heads * self._head_dim,
+        self.ff_layer_norm = layerNorm(self._num_heads * self._head_dim)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim,
-                                                          model_out_dim=2 * self._num_heads * self._head_dim)
+                                                          model_out_dim=self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.ppr_diff = ppr_diff
         self.reset_parameters()
@@ -265,7 +265,7 @@ class RGDTLayer(nn.Module):
             # print(rst.shape)
             rst = rst.flatten(1)
             nei_res = nei_res.flatten(1)
-            rst = torch.cat([rst, nei_res], dim=-1)
+            rst = rst + nei_res
             # +++++++++++++++++++++++++++++++++++++++
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
