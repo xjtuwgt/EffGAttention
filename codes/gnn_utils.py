@@ -8,7 +8,6 @@ import torch.nn.functional as F
 from dgl.nn.pytorch.utils import Identity
 from torch import Tensor, LongTensor
 
-
 """
     If the number of neighbors is large, then we need to select a subset of neighbors for feature aggregation
     codes for mask testing
@@ -48,6 +47,7 @@ def top_k_attention(graph: DGLHeteroGraph, attn_scores: Tensor, k: int = 5):
     :param k:
     :return:
     """
+
     def top_k_reduce_func(nodes):
         edge_attention_score = nodes.mailbox['m_a']
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
@@ -77,6 +77,7 @@ def top_p_attention(graph: DGLHeteroGraph, attn_scores: Tensor, p: float = 0.75)
     :param p:
     :return:
     """
+
     def top_p_reduce_func(nodes):
         edge_attention_score = nodes.mailbox['m_a']
         batch_size, neighbor_num, head_num, _ = edge_attention_score.shape
@@ -127,11 +128,14 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
         graph.apply_edges(fn.e_div_v('ta', 'attn_sum', 'norm_attn'))
         norm_attentions = graph.edata.pop('norm_attn')
         return norm_attentions
+
+
 # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
 class PositionWiseFeedForward(nn.Module):
     "Implements FFN equation."
+
     def __init__(self, model_dim, d_hidden, layer_num=1, dropout=0.25):
         super(PositionWiseFeedForward, self).__init__()
         self.model_dim = model_dim
@@ -153,7 +157,7 @@ class PositionWiseFeedForward(nn.Module):
 
 
 class MLPReadout(nn.Module):
-    def __init__(self, input_dim, output_dim, L=2, dropout: float=0.1):  # L=nb_hidden_layers
+    def __init__(self, input_dim, output_dim, L=2, dropout: float = 0.1):  # L=nb_hidden_layers
         super().__init__()
         list_FC_layers = [nn.Linear(input_dim // 2 ** l, input_dim // 2 ** (l + 1), bias=True) for l in range(L)]
         list_FC_layers.append(nn.Linear(input_dim // 2 ** L, output_dim, bias=True))
@@ -266,36 +270,14 @@ class RMSNorm(nn.Module):
         return self.scale * x_normed
 
 
+def attention(query, key, value, mask=None, dropout=None):
+    "Compute 'Scaled Dot Product Attention'"
+    d_k = query.size(-1)
+    scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
+    if mask is not None:
+        scores = scores.masked_fill(mask == 0, -1e9)
+    p_attn = F.softmax(scores, dim=-1)
+    if dropout is not None:
+        p_attn = dropout(p_attn)
+    return torch.matmul(p_attn, value), p_attn
 
-
-# class NeighborInteractionLayer(nn.Module):
-#     def __init__(self, head_num, d_model, dropout=0.1):
-#         "Take in model size and number of heads."
-#         super(NeighborInteractionLayer, self).__init__()
-#         assert d_model % head_num == 0
-#         self._head_dim = d_model // head_num
-#         self._head_hum = head_num
-#         self.dropout = nn.Dropout(p=dropout)
-#
-#     def forward(self, graph: DGLHeteroGraph, inp_feat: Tensor):
-#         return
-#
-#     def other(self, query, key, value, mask=None):
-#         if mask is not None:
-#             # Same mask applied to all h heads.
-#             mask = mask.unsqueeze(1)
-#         nbatches = query.size(0)
-#
-#         # 1) Do all the linear projections in batch from d_model => h x d_k
-#         query, key, value = \
-#             [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2)
-#              for l, x in zip(self.linears, (query, key, value))]
-#
-#         # 2) Apply attention on all the projected vectors in batch.
-#         x, self.attn = attention(query, key, value, mask=mask,
-#                                  dropout=self.dropout)
-#
-#         # 3) "Concat" using a view and apply a final linear.
-#         x = x.transpose(1, 2).contiguous() \
-#             .view(nbatches, -1, self.h * self.d_k)
-#         return self.linears[-1](x)
