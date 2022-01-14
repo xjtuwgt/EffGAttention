@@ -152,6 +152,30 @@ class PositionWiseFeedForward(nn.Module):
         nn.init.xavier_normal_(self.w_2.weight, gain=gain)
 
 
+class MLPReadout(nn.Module):
+    def __init__(self, input_dim, output_dim, L=2, dropout: float=0.1):  # L=nb_hidden_layers
+        super().__init__()
+        list_FC_layers = [nn.Linear(input_dim // 2 ** l, input_dim // 2 ** (l + 1), bias=True) for l in range(L)]
+        list_FC_layers.append(nn.Linear(input_dim // 2 ** L, output_dim, bias=True))
+        self.FC_layers = nn.ModuleList(list_FC_layers)
+        self.dropout = nn.Dropout(dropout)
+        self.L = L
+        self.init()
+
+    def init(self):
+        gain = nn.init.calculate_gain('relu')
+        for _ in self.FC_layers:
+            nn.init.xavier_normal_(_.weight, gain=gain)
+
+    def forward(self, x):
+        y = x
+        for l in range(self.L):
+            y = self.FC_layers[l](y)
+            y = self.dropout(F.relu(y))
+        y = self.FC_layers[self.L](y)
+        return y
+
+
 def small_init_gain(d_in, d_out):
     return math.sqrt(2.0 / (d_in + 4.0 * d_out))
 
