@@ -136,12 +136,13 @@ def top_kp_attn_normalization(graph: DGLHeteroGraph, attn_scores: Tensor, attn_m
 class PositionWiseFeedForward(nn.Module):
     "Implements FFN equation."
 
-    def __init__(self, model_dim, d_hidden, layer_num=1, dropout=0.25):
+    def __init__(self, model_dim, d_hidden, model_out_dim, layer_num=1, dropout=0.25):
         super(PositionWiseFeedForward, self).__init__()
         self.model_dim = model_dim
         self.hidden_dim = d_hidden
+        self.model_out_dim = model_out_dim
         self.w_1 = nn.Linear(model_dim, d_hidden)
-        self.w_2 = nn.Linear(d_hidden, model_dim)
+        self.w_2 = nn.Linear(d_hidden, model_out_dim)
         self.dropout = nn.Dropout(dropout)
         self.layer_num = layer_num
         self.init()
@@ -150,9 +151,9 @@ class PositionWiseFeedForward(nn.Module):
         return self.w_2(self.dropout(F.relu(self.w_1(x))))
 
     def init(self):
-        gain = small_init_gain(d_in=self.hidden_dim, d_out=self.model_dim) / math.sqrt(self.layer_num)
-        nn.init.xavier_normal_(self.w_1.weight, gain=gain)
         gain = small_init_gain(d_in=self.model_dim, d_out=self.hidden_dim) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.w_1.weight, gain=gain)
+        gain = small_init_gain(d_in=self.model_dim, d_out=self.model_out_dim) / math.sqrt(self.layer_num)
         nn.init.xavier_normal_(self.w_2.weight, gain=gain)
 
 
@@ -281,16 +282,18 @@ def attention_computation(query: Tensor, key: Tensor):
 
 def neighbor_interaction_computation(graph: DGLHeteroGraph, attn_drop=None):
     def attention_message_function(edges):
-        query, key, value = edges.dst['q'], edges.src['k'], edges.src['v']
-        return {'m_k': key, 'm_q': query, 'm_v': value}
+        query, neighbors_key, neighbors_v = edges.src['q'], edges.src['k'], edges.src['v']
+        return {'m_k': neighbors_key, 'm_q': query, 'm_v': neighbors_v}
 
     def neighbor_attention_reduce_function(nodes):
-        key, query, value = nodes.mailbox['m_k'], nodes.mailbox['m_q'], nodes.mailbox['m_v']
+        query, key, value = nodes.mailbox['m_q'], nodes.mailbox['m_k'], nodes.mailbox['m_v']
         p_attn = attention_computation(query=query, key=key)
         if attn_drop is not None:
             p_attn = attn_drop(p_attn)
-        rv = torch.matmul(p_attn, value)
-        print(rv.shape)
-        return {'rv': key.sum(dim=1)}
+        rv = torch.matmul(p_attn, value).mean(dim=1)
+        return {'rv': rv}
 
-    graph.update_all(attention_message_function, neighbor_attention_reduce_function)
+    with graph.local_scope():
+        graph.update_all(attention_message_function, neighbor_attention_reduce_function)
+        neighbor_value = graph.ndata.pop('rv')
+        return neighbor_value

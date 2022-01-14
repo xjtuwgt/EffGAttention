@@ -73,10 +73,22 @@ class InstanceNorm(_InstanceNorm):
 # print(insnorm(x))
 from kge_codes.kge_utils import graph_to_triples, triple_train_valid_split
 from graph_data.citation_graph_data import citation_graph_reconstruction
+from codes.gnn_utils import neighbor_interaction_computation
 
 import dgl
-# g = dgl.graph(([0, 1], [1, 2]))
+edges = torch.tensor([0, 1, 2, 1, 2, 0]), torch.tensor([1, 2, 0, 0, 1, 2])  # 边：2->3, 5->5, 3->0
+g = dgl.graph(edges)
+print(g.number_of_nodes())
+
 # g.edata['r_id'] = torch.randint(1, 9, (2,))
+
+g.srcdata.update({'k': torch.rand((3, 2, 8)), 'v': torch.randn((3, 2, 8))})
+g.dstdata.update({'q': torch.randn((3, 2, 8))})
+
+# print(g.ndata)
+
+neighbor_value = neighbor_interaction_computation(graph=g)
+print(neighbor_value)
 #
 # x, y, z = g.edges(form='all')
 # print(x)
@@ -105,7 +117,6 @@ import dgl
 
 import torch.nn as nn
 import torch.nn.functional as F
-from codes.gnn_utils import attention
 
 """
     MLP Layer used after graph vector representation
