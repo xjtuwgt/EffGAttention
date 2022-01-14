@@ -40,7 +40,7 @@ def evaluate(graph, model, features, labels, mask, debug=False, loss=False):
 def model_train(g, model, features, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
     dur = []
     best_val_acc = 0.0
-    best_val_loss = 0.0
+    best_val_loss = 1e9
     best_test_acc = 0.0
     t0 = time.time()
     train_mask_backup = train_mask.clone()
@@ -91,6 +91,7 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
         else:
             if best_val_loss > val_loss:
                 best_val_loss = val_loss
+                best_val_acc = val_acc
                 best_test_acc = test_acc
                 patience_count = 0
             else:
