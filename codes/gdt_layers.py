@@ -189,7 +189,7 @@ class RGDTLayer(nn.Module):
         self.ff_layer_norm = layerNorm(2 * self._num_heads * self._head_dim)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim,
-                                                          model_out_dim=self._num_heads * self._head_dim)
+                                                          model_out_dim=2 * self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.ppr_diff = ppr_diff
         self.reset_parameters()
@@ -228,7 +228,6 @@ class RGDTLayer(nn.Module):
             graph.dstdata.update({'q': feat_tail})
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             nei_res = neighbor_interaction_computation(graph=graph, attn_drop=self.attn_drop)
-            print(nei_res.shape)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.apply_edges(fn.u_mul_v('k', 'q', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
