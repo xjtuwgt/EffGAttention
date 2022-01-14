@@ -169,7 +169,6 @@ class RGDTLayer(nn.Module):
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
-        self.attn_activation = nn.PReLU()
 
         if residual:
             if in_ent_feats != out_ent_feats:
@@ -234,7 +233,7 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.edata.update({'e': e.sum(dim=-1).unsqueeze(dim=2)})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
-            e = self.attn_activation(graph.edata.pop('e')/math.sqrt(self._head_dim))
+            e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             if self.training and self.edge_drop > 0:
                 perm = torch.randperm(graph.number_of_edges(), device=e.device)
