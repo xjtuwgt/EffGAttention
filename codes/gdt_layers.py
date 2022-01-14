@@ -186,7 +186,7 @@ class RGDTLayer(nn.Module):
         self.edge_drop = edge_drop
 
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
-        self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
+        self.graph_layer_rel_norm = layerNorm(self._out_ent_feats)
         self.ff_layer_norm = layerNorm(self._out_ent_feats)
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim)
@@ -229,8 +229,8 @@ class RGDTLayer(nn.Module):
             graph.dstdata.update({'et': feat_tail})
             graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            feat_rel_norm = self.graph_layer_rel_norm(rel_feat)
-            feat_rel = self.fc_rel(self.feat_drop(feat_rel_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_rel = self.fc_rel(self.feat_drop(rel_feat)).view(-1, self._num_heads, self._head_dim)
+            feat_rel = self.graph_layer_rel_norm(feat_rel)
             edge_ids = graph.edata['rid']
             feat_rel = feat_rel[edge_ids]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
