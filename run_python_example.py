@@ -89,12 +89,12 @@ import dgl
 # print(c)
 # print(d)
 
-graph, n_entities, n_relations, n_classes, n_feats = citation_graph_reconstruction(dataset='cora')
-# print(graph)
-triples, _, _, relation2id = graph_to_triples(graph=graph, edge_rel_name='rid')
-print(triples.shape)
-
-triple_train_valid_split(triples=triples)
+# graph, n_entities, n_relations, n_classes, n_feats = citation_graph_reconstruction(dataset='cora')
+# # print(graph)
+# triples, _, _, relation2id = graph_to_triples(graph=graph, edge_rel_name='rid')
+# print(triples.shape)
+#
+# triple_train_valid_split(triples=triples)
 
 # graph_to_triples()
 # g_2 = dgl.transform.khop_graph(g, 2)
@@ -102,3 +102,31 @@ triple_train_valid_split(triples=triples)
 # g_2 = dgl.khop_graph(g=g, k=3)
 # print(g_2.number_of_edges())
 # print(g_2.edges())
+
+import torch.nn as nn
+import torch.nn.functional as F
+
+"""
+    MLP Layer used after graph vector representation
+"""
+
+
+class MLPReadout(nn.Module):
+    def __init__(self, input_dim, output_dim, L=2, dropout: float=0.1):  # L=nb_hidden_layers
+        super().__init__()
+        list_FC_layers = [nn.Linear(input_dim // 2 ** l, input_dim // 2 ** (l + 1), bias=True) for l in range(L)]
+        list_FC_layers.append(nn.Linear(input_dim // 2 ** L, output_dim, bias=True))
+        self.FC_layers = nn.ModuleList(list_FC_layers)
+        self.dropout = nn.Dropout(dropout)
+        self.L = L
+
+    def forward(self, x):
+        y = x
+        for l in range(self.L):
+            y = self.FC_layers[l](y)
+            y = self.dropout(F.relu(y))
+        y = self.FC_layers[self.L](y)
+        return y
+
+f = MLPReadout(input_dim=256, output_dim=6)
+print(f)

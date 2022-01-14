@@ -267,6 +267,7 @@ class RMSNorm(nn.Module):
 
 
 
+
 # class NeighborInteractionLayer(nn.Module):
 #     def __init__(self, head_num, d_model, dropout=0.1):
 #         "Take in model size and number of heads."
