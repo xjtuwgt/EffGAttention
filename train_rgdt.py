@@ -121,7 +121,6 @@ def main(args):
     args.num_entities = number_of_nodes
     args.num_relations = n_relations
     args.node_emb_dim = g.ndata['feat'].shape[1]
-    args.rel_emb_dim = g.ndata['feat'].shape[1]
     g = g.int().to(args.device)
     features = g.ndata['feat']
     labels = g.ndata['label']
