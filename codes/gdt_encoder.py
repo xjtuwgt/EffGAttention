@@ -4,7 +4,6 @@ from torch.nn import LayerNorm
 from torch import Tensor
 from dgl.nn.pytorch.utils import Identity
 from codes.gnn_utils import EmbeddingLayer
-from codes.gnn_utils import MLPReadout
 import torch
 
 
@@ -96,10 +95,8 @@ class RGDTEncoder(nn.Module):
                                                       edge_drop=self.config.edge_drop,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-
-        self.classifier = MLPReadout(input_dim=self.config.hidden_dim, output_dim=self.config.num_classes)
-        # self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
-        # self.reset_parameters()
+        self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
+        self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
 
     def reset_parameters(self):
