@@ -277,5 +277,5 @@ class RGDTLayer(nn.Module):
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
             return feat
