@@ -209,7 +209,7 @@ class EmbeddingLayer(nn.Module):
         """Initializing the embeddings.
         """
         gain = small_init_gain_v2(d_in=self.dim, d_out=self.dim)
-        nn.init.xavier_normal_(self.embedding.weight, gain=0.01)
+        nn.init.xavier_normal_(self.embedding.weight, gain=gain)
         if isinstance(self.projection, nn.Linear):
             gain = small_init_gain_v2(d_in=self.dim, d_out=self.proj_dim)
             nn.init.xavier_normal_(self.projection.weight, gain=gain)
@@ -279,13 +279,18 @@ def attention_computation(query: Tensor, key: Tensor):
     return p_attn
 
 
-def attention_message_function(edges):
-    src_nodes = edges.src['']
-    return
+def neighbor_interaction_computation(graph: DGLHeteroGraph, attn_drop=None):
+    def attention_message_function(edges):
+        query, key, value = edges.dst['q'], edges.src['k'], edges.src['v']
+        return {'m_k': key, 'm_q': query, 'm_v': value}
 
-def neighbor_attention_reduce_function(nodes):
+    def neighbor_attention_reduce_function(nodes):
+        key, query, value = nodes.mailbox['m_k'], nodes.mailbox['m_q'], nodes.mailbox['m_v']
+        p_attn = attention_computation(query=query, key=key)
+        if attn_drop is not None:
+            p_attn = attn_drop(p_attn)
+        rv = torch.matmul(p_attn, value)
+        print(rv.shape)
+        return {'rv': key.sum(dim=1)}
 
-    return
-
-
-
+    graph.update_all(attention_message_function, neighbor_attention_reduce_function)
