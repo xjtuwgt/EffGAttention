@@ -55,20 +55,13 @@ class RGDTEncoder(nn.Module):
     def __init__(self, config):
         super(RGDTEncoder, self).__init__()
         self.config = config
-        if self.config.proj_emb_dim > 0:
-            if self.config.proj_emb_dim == self.config.rel_emb_dim:
-                self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.rel_emb_dim)
-            else:
-                self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.rel_emb_dim,
-                                                project_dim=self.config.proj_emb_dim)
-            self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim,
-                                            project_dim=self.config.proj_emb_dim)
-            ent_in_dim = rel_in_dim = self.config.proj_emb_dim
+        self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
+        if self.config.node_emb_dim == self.config.rel_emb_dim:
+            self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.node_emb_dim)
         else:
-            self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.rel_emb_dim)
-            self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
-            ent_in_dim = self.config.node_emb_dim
-            rel_in_dim = self.config.rel_emb_dim
+            self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.rel_emb_dim,
+                                            project_dim=self.config.node_emb_dim)
+        ent_in_dim = rel_in_dim = self.config.node_emb_dim
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=RGDTLayer(in_ent_feats=ent_in_dim,
                                                    out_ent_feats=self.config.hidden_dim,
