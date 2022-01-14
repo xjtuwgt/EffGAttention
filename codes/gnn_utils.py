@@ -286,11 +286,13 @@ def neighbor_interaction_computation(graph: DGLHeteroGraph, attn_drop=None):
         return {'m_k': neighbors_key, 'm_q': query, 'm_v': neighbors_v}
 
     def neighbor_attention_reduce_function(nodes):
-        query, key, value = nodes.mailbox['m_q'], nodes.mailbox['m_k'], nodes.mailbox['m_v']
+        messages = nodes.mailbox['m_q'], nodes.mailbox['m_k'], nodes.mailbox['m_v']
+        query, key, value = [_.transpose(1, 2) for _ in messages]
         p_attn = attention_computation(query=query, key=key)
         if attn_drop is not None:
             p_attn = attn_drop(p_attn)
-        rv = torch.matmul(p_attn, value).mean(dim=1)
+        rv = torch.matmul(p_attn, value)
+        rv = rv.transpose(1, 2).contiguous().mean(dim=1)
         return {'rv': rv}
 
     with graph.local_scope():
