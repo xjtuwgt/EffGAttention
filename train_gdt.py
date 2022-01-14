@@ -24,18 +24,23 @@ def accuracy(logits, labels, debug=False):
     return correct.item() * 1.0 / len(labels)
 
 
-def evaluate(graph, model, features, labels, mask, debug=False):
+def evaluate(graph, model, features, labels, mask, debug=False, loss=False):
     model.eval()
+    loss_fcn = torch.nn.CrossEntropyLoss()
     with torch.no_grad():
         logits = model(graph, features)
         logits = logits[mask]
         labels = labels[mask]
+        if loss:
+            valid_loss = loss_fcn(logits, labels)
+            return accuracy(logits, labels, debug=debug), valid_loss
         return accuracy(logits, labels, debug=debug)
 
 
 def model_train(g, model, features, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
     dur = []
     best_val_acc = 0.0
+    best_val_loss = 0.0
     best_test_acc = 0.0
     t0 = time.time()
     train_mask_backup = train_mask.clone()
@@ -64,20 +69,34 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
 
         if args.fastmode:
             val_acc = accuracy(logits[val_mask], labels[val_mask])
+            if args.model_selection_mode == 'loss':
+                val_loss = loss_fcn(logits[val_mask], labels[val_mask])
             test_acc = accuracy(logits[test_mask], labels[test_mask])
         else:
-            val_acc = evaluate(g, model, features, labels, val_mask)
+            if args.model_selection_mode == 'loss':
+                val_acc, val_loss = evaluate(g, model, features, labels, val_mask, debug=False, loss=True)
+            else:
+                val_acc = evaluate(g, model, features, labels, val_mask, debug=False, loss=False)
             test_acc = evaluate(g, model, features, labels, test_mask)
 
-        if best_val_acc <= val_acc:
-            best_val_acc = val_acc
-            best_test_acc = test_acc
-            patience_count = 0
+        if args.model_selection_mode == 'accuracy':
+            if best_val_acc <= val_acc:
+                best_val_acc = val_acc
+                best_test_acc = test_acc
+                patience_count = 0
+            else:
+                patience_count = patience_count + 1
+                if patience_count >= args.patience:
+                    break
         else:
-            patience_count = patience_count + 1
-            if patience_count >= args.patience:
-                break
-
+            if best_val_loss > val_loss:
+                best_val_loss = val_loss
+                best_test_acc = test_acc
+                patience_count = 0
+            else:
+                patience_count = patience_count + 1
+                if patience_count >= args.patience:
+                    break
         logger.info("Epoch {:04d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
                     " ValAcc {:.4f} | B/ValAcc {:.4f} | B/TestAcc {:.4f} | ETputs (KTEPS) {:.2f}".
                     format(epoch, np.mean(dur), loss.item(), train_acc,

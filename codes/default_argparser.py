@@ -77,6 +77,8 @@ def default_parser():
                         help="configuration file for command parser")
     parser.add_argument('--output_dir', type=str, default=OUTPUT_FOLDER,
                         help='Directory to save model and summaries')
+    parser.add_argument('--model_selection_mode', type=str, default='accuracy', choices=['accuracy', 'loss'],
+                        help='Directory to save model and summaries')
     parser.add_argument('--data_path', type=str, default=HOME_DATA_FOLDER)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--citation_name', type=str, default='citeseer')
