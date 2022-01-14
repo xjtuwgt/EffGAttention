@@ -169,6 +169,7 @@ class RGDTLayer(nn.Module):
         self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
         self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
+        self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
 
         if residual:
             if in_ent_feats != out_ent_feats:
@@ -206,6 +207,7 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn_r, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
 
@@ -223,16 +225,16 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            graph.apply_edges(fn.u_dot_v('eh', 'et', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             feat_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(feat_rel_norm)).view(-1, self._num_heads, self._head_dim)
-            edge_ids = graph.edata['rid']
-            feat_rel = feat_rel[edge_ids]
+            er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
+            er = er[graph.edata['rid']]
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            e = graph.edata.pop('e') * feat_rel
+            e = graph.edata.pop('e') * er
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.edata.update({'e': e.sum(dim=-1).unsqueeze(dim=2)})
+            graph.edata.update({'e': e})
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
