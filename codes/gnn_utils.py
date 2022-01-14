@@ -270,14 +270,22 @@ class RMSNorm(nn.Module):
         return self.scale * x_normed
 
 
-def attention(query, key, value, mask=None, dropout=None):
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+def attention_computation(query: Tensor, key: Tensor):
     "Compute 'Scaled Dot Product Attention'"
     d_k = query.size(-1)
     scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(d_k)
-    if mask is not None:
-        scores = scores.masked_fill(mask == 0, -1e9)
     p_attn = F.softmax(scores, dim=-1)
-    if dropout is not None:
-        p_attn = dropout(p_attn)
-    return torch.matmul(p_attn, value), p_attn
+    return p_attn
+
+
+def attention_message_function(edges):
+    src_nodes = edges.src['']
+    return
+
+def neighbor_attention_reduce_function(nodes):
+
+    return
+
+
 

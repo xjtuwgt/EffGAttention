@@ -80,9 +80,9 @@ class GDTLayer(nn.Module):
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
-            graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_dot_v('eh', 'et', 'e'))
+            graph.srcdata.update({'k': feat_head, 'v': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'q': feat_tail})
+            graph.apply_edges(fn.u_dot_v('k', 'q', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
             e = (graph.edata.pop('e')/math.sqrt(self._head_dim))
@@ -103,8 +103,8 @@ class GDTLayer(nn.Module):
             else:
                 graph.edata['a'] = self.attn_drop(a_value)
                 # # message passing
-                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                rst = graph.dstdata.pop('ft')
+                graph.update_all(fn.u_mul_e('v', 'a', 'm'), fn.sum('m', 'v'))
+                rst = graph.dstdata.pop('v')
             # residual
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
@@ -122,7 +122,7 @@ class GDTLayer(nn.Module):
     def ppr_estimation(self, graph):
         with graph.local_scope():
             graph = graph.local_var()
-            feat_0 = graph.srcdata.pop('ft')
+            feat_0 = graph.srcdata.pop('v')
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
@@ -221,9 +221,9 @@ class RGDTLayer(nn.Module):
             feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
-            graph.dstdata.update({'et': feat_tail})
-            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            graph.srcdata.update({'k': feat_head, 'v': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'q': feat_tail})
+            graph.apply_edges(fn.u_mul_v('k', 'q', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             feat_rel_norm = self.graph_layer_rel_norm(rel_feat)
             feat_rel = self.fc_rel(self.feat_drop(feat_rel_norm)).view(-1, self._num_heads, self._head_dim)
@@ -249,8 +249,8 @@ class RGDTLayer(nn.Module):
                 rst = self.ppr_estimation(graph=graph)
             else:
                 graph.edata['a'] = self.attn_drop(a_value)
-                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
-                rst = graph.dstdata['ft']
+                graph.update_all(fn.u_mul_e('v', 'a', 'm'), fn.sum('m', 'v'))
+                rst = graph.dstdata['v']
             # residual
             if self.res_fc is not None:
                 resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
@@ -269,7 +269,7 @@ class RGDTLayer(nn.Module):
     def ppr_estimation(self, graph):
         with graph.local_scope():
             graph = graph.local_var()
-            feat_0 = graph.srcdata.pop('ft')
+            feat_0 = graph.srcdata.pop('v')
             feat = feat_0.clone()
             attentions = graph.edata.pop('a')
             for _ in range(self._hop_num):
