@@ -161,11 +161,12 @@ def small_init_gain_v2(d_in, d_out):
 
 
 class EmbeddingLayer(nn.Module):
-    def __init__(self, num: int, dim: int, project_dim: int = None):
+    def __init__(self, num: int, dim: int, drop_out=0.1, project_dim: int = None):
         super(EmbeddingLayer, self).__init__()
         self.num = num
         self.dim = dim
         self.proj_dim = project_dim
+        self.dropout = nn.Dropout(p=drop_out)
         self.embedding = nn.Embedding(num_embeddings=num, embedding_dim=dim)
         if self.proj_dim is not None and self.proj_dim > 0:
             self.projection = torch.nn.Linear(self.dim, self.proj_dim, bias=False)
@@ -186,7 +187,10 @@ class EmbeddingLayer(nn.Module):
             nn.init.xavier_normal_(self.projection.weight, gain=gain)
 
     def _embed(self, embeddings):
-        embeddings = self.projection(embeddings)
+        if isinstance(self.projection, nn.Linear):
+            embeddings = self.projection(self.dropout(embeddings))
+        else:
+            embeddings = self.projection(embeddings)
         return embeddings
 
     def forward(self, indexes: LongTensor):
