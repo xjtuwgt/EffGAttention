@@ -8,7 +8,6 @@ from torch.nn import LayerNorm as layerNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionWiseFeedForward, small_init_gain, small_init_gain_v2
-from codes.gnn_utils import neighbor_interaction_computation
 from torch import Tensor
 
 
@@ -186,10 +185,10 @@ class RGDTLayer(nn.Module):
 
         self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
         self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
-        self.ff_layer_norm = layerNorm(2 * self._num_heads * self._head_dim)
-        self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._num_heads * self._head_dim,
+        self.ff_layer_norm = layerNorm(self._num_heads * self._head_dim)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
                                                           d_hidden=4 * self._num_heads * self._head_dim,
-                                                          model_out_dim=2 * self._num_heads * self._head_dim)
+                                                          model_out_dim=self._num_heads * self._head_dim)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.ppr_diff = ppr_diff
         self.reset_parameters()
@@ -227,7 +226,6 @@ class RGDTLayer(nn.Module):
             graph.srcdata.update({'k': feat_head, 'v': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'q': feat_tail})
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-            nei_res = neighbor_interaction_computation(graph=graph, attn_drop=self.attn_drop)
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.apply_edges(fn.u_mul_v('k', 'q', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -264,8 +262,6 @@ class RGDTLayer(nn.Module):
 
             # print(rst.shape)
             rst = rst.flatten(1)
-            nei_res = nei_res.flatten(1)
-            rst = torch.cat([rst, nei_res], dim=-1)
             # +++++++++++++++++++++++++++++++++++++++
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
             rst = self.feat_drop(ff_rst) + rst  # residual
