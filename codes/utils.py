@@ -49,7 +49,7 @@ def rand_search_parameter(space: dict):
 
 def citation_hyper_parameter_space():
     learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 3e-4, 1e-3, 2e-3, 5e-3]}
-    weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [1e-5, 5e-4]}
+    weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [1e-8]}
     attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.25, 0.65, 0.025))}
     feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.25, 0.65, 0.025))}
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.05, 0.26, 0.025))}
