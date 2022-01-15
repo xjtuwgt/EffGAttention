@@ -1,7 +1,6 @@
 import dgl
 import numpy as np
 import torch
-from numpy import random
 from dgl.sampling import sample_neighbors
 from torch import Tensor
 from time import time
@@ -105,11 +104,20 @@ def sub_graph_neighbor_sample(graph, anchor_node_ids: Tensor, cls_node_ids: Tens
         hop_neighbor = sg_src if edge_dir == 'in' else sg_dst
         neighbors_dict['{}_hop_{}'.format(edge_dir, hop)] = hop_neighbor
         hop = hop + 1
+    # #############################################################################################
+    neighbors_dict = dict([(k, torch.unique(v, return_counts=True)) for k, v in neighbors_dict.items()])
+    node_arw_label_dict = {anchor_node_ids[0].data.item(): 1, cls_node_ids[0].data.item(): 0}
+    # key == parent node id, value = length/hop based label
+    # ###########################################anonymous rand walk node labels###################
+    for hop in range(1, hop_number + 1):
+        hop_neighbors = neighbors_dict['{}_hop_{}'.format(edge_dir, hop)]
+        for neighbor in hop_neighbors[0].tolist():
+            if neighbor not in node_arw_label_dict:
+                node_arw_label_dict[neighbor] = hop + 1
     end_time = time() if debug else 0
     if debug:
         print('Sampling time = {:.4f} seconds'.format(end_time - start_time))
-    neighbors_dict = dict([(k, torch.unique(v, return_counts=True)) for k, v in neighbors_dict.items()])
-    return neighbors_dict, edge_dict
+    return neighbors_dict, node_arw_label_dict, edge_dict
 
 
 def sub_graph_constructor(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict: dict, bi_directed: bool = True):
@@ -163,7 +171,7 @@ def cls_node_addition(subgraph, cls_parent_node_id: int, special_relation_dict: 
     cls_idx = parent2sub_dict[cls_parent_node_id]
     assert cls_idx == subgraph.number_of_nodes() - 1
     cls_relation = [special_relation_dict['cls_r']] * (2 * (subgraph.number_of_nodes() - 1))
-    cls_relation = torch.tensor(cls_relation, dtype=torch.long)
+    cls_relation = torch.as_tensor(cls_relation, dtype=torch.long)
     cls_src_nodes = [cls_idx] * (subgraph.number_of_nodes() - 1)
     cls_src_nodes = torch.tensor(cls_src_nodes, dtype=torch.long)
     cls_dst_nodes = torch.arange(0, subgraph.number_of_nodes() - 1)
@@ -175,8 +183,8 @@ def cls_node_addition(subgraph, cls_parent_node_id: int, special_relation_dict: 
 
 def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
                                     special_relation2id: dict, edge_dir: str = 'in', self_loop: bool = False,
-                                    add_cls: bool = True, bi_directed: bool = False, debug=False):
-    neighbors_dict, edge_dict = sub_graph_neighbor_sample(graph=graph,
+                                    cls: bool = True, bi_directed: bool = False, debug=False):
+    neighbors_dict, node_arw_label_dict, edge_dict = sub_graph_neighbor_sample(graph=graph,
                                                           anchor_node_ids=anchor_node_ids,
                                                           cls_node_ids=cls_node_ids,
                                                           fanouts=fanouts, edge_dir=edge_dir, debug=debug)
@@ -184,10 +192,15 @@ def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids
                                      neighbors_dict=neighbors_dict)
     parent_node_ids, sub_node_ids = subgraph.ndata['nid'].tolist(), subgraph.nodes().tolist()
     parent2sub_dict = dict(zip(parent_node_ids, sub_node_ids))
-    if add_cls:
+    if cls:
         cls_parent_node_id = neighbors_dict['cls'][0][0].data.item()
         subgraph, parent2sub_dict = cls_node_addition(subgraph=subgraph, special_relation_dict=special_relation2id,
                                                       cls_parent_node_id=cls_parent_node_id)
     if self_loop:
         subgraph = add_self_loop_in_graph(graph=subgraph, self_loop_r=special_relation2id['loop_r'])
+    assert len(parent2sub_dict) == subgraph.number_of_nodes()
+    node_orders = torch.zeros(len(parent2sub_dict), dtype=torch.long)
+    for key, value in parent2sub_dict.items():
+        node_orders[value] = node_arw_label_dict[key]
+    subgraph.ndata['n_rw_pos'] = node_orders
     return subgraph, parent2sub_dict

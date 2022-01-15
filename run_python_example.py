@@ -74,22 +74,57 @@ class InstanceNorm(_InstanceNorm):
 from kge_codes.kge_utils import graph_to_triples, triple_train_valid_split
 from graph_data.citation_graph_data import citation_graph_reconstruction
 from codes.gnn_utils import neighbor_interaction_computation
+from codes.graph_utils import construct_special_graph_dictionary, anchor_node_sub_graph_extractor
 
 
 import dgl
-edges = torch.tensor([0, 1, 2, 1, 2, 0]), torch.tensor([1, 2, 0, 0, 1, 2])  # 边：2->3, 5->5, 3->0
+edges = torch.tensor([0, 1]), torch.tensor([1, 2])  # 边：2->3, 5->5, 3->0
 g = dgl.graph(edges)
 print(g.number_of_nodes())
+g.ndata['nid'] = torch.arange(0, g.number_of_nodes(), dtype=torch.long)
+g.edata['rid'] = torch.zeros(g.number_of_edges(), dtype=torch.long)
+
+graph, number_of_relations, special_node_dict, special_relation_dict = \
+    construct_special_graph_dictionary(graph=g, n_relations=1, hop_num=5)
+
+subgraph, parent2sub_dict = anchor_node_sub_graph_extractor(graph=graph, anchor_node_ids=torch.LongTensor([0]),
+                                cls_node_ids=torch.LongTensor([special_node_dict['cls']]),
+                                fanouts=[-1,-1],
+                                edge_dir='in', cls=False,
+                                special_relation2id=special_relation_dict)
+
+# print(number_of_relations)
+# print(special_node_dict)
+# print(special_relation_dict)
+# print(graph)
+print(graph.edges())
+
+# print(subgraph)
+print(subgraph.ndata['n_rw_pos'])
+print(subgraph.edges())
+print(parent2sub_dict)
+print('*' * 50)
+
+subgraph, parent2sub_dict = anchor_node_sub_graph_extractor(graph=graph, anchor_node_ids=torch.LongTensor([1]),
+                                cls_node_ids=torch.LongTensor([special_node_dict['cls']]),
+                                fanouts=[-1,-1],
+                                edge_dir='in', cls=False,
+                                special_relation2id=special_relation_dict)
+
+# print(subgraph)
+print(subgraph.ndata['n_rw_pos'])
+print(subgraph.edges())
+print(parent2sub_dict)
 
 # g.edata['r_id'] = torch.randint(1, 9, (2,))
 
-g.srcdata.update({'k': torch.rand((3, 2, 8)), 'v': torch.randn((3, 2, 8))})
-g.dstdata.update({'q': torch.randn((3, 2, 8))})
+# g.srcdata.update({'k': torch.rand((3, 2, 8)), 'v': torch.randn((3, 2, 8))})
+# g.dstdata.update({'q': torch.randn((3, 2, 8))})
 
-# print(g.ndata)
-
-neighbor_value = neighbor_interaction_computation(graph=g)
-print(neighbor_value)
+# # print(g.ndata)
+#
+# neighbor_value = neighbor_interaction_computation(graph=g)
+# print(neighbor_value)
 #
 # x, y, z = g.edges(form='all')
 # print(x)
@@ -116,32 +151,8 @@ print(neighbor_value)
 # print(g_2.number_of_edges())
 # print(g_2.edges())
 
-import torch.nn as nn
-import torch.nn.functional as F
-
-"""
-    MLP Layer used after graph vector representation
-"""
-
-# x = torch.rand((3,4))
-# y = torch.rand((3, 1))
-
-# class MLPReadout(nn.Module):
-#     def __init__(self, input_dim, output_dim, L=2, dropout: float=0.1):  # L=nb_hidden_layers
-#         super().__init__()
-#         list_FC_layers = [nn.Linear(input_dim // 2 ** l, input_dim // 2 ** (l + 1), bias=True) for l in range(L)]
-#         list_FC_layers.append(nn.Linear(input_dim // 2 ** L, output_dim, bias=True))
-#         self.FC_layers = nn.ModuleList(list_FC_layers)
-#         self.dropout = nn.Dropout(dropout)
-#         self.L = L
+# import torch.nn as nn
+# import torch.nn.functional as F
 #
-#     def forward(self, x):
-#         y = x
-#         for l in range(self.L):
-#             y = self.FC_layers[l](y)
-#             y = self.dropout(F.relu(y))
-#         y = self.FC_layers[self.L](y)
-#         return y
-#
-# f = MLPReadout(input_dim=256, output_dim=6)
-# print(f)
+# """
+#     MLP Layer used after graph vector representation
