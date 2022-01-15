@@ -60,7 +60,7 @@ class GDTLayer(nn.Module):
                 self.cat_fc = Identity()
             self.ff_layer_norm = layerNorm(2 * self._out_feats)
             self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._out_feats,
-                                                              d_hidden=4 * self._out_feats,
+                                                              d_hidden=8 * self._out_feats,
                                                               model_out_dim=2*self._out_feats)
         else:
             self.register_buffer('cat_fc', None)
@@ -225,8 +225,8 @@ class RGDTLayer(nn.Module):
                 self.cat_fc = Identity()
             self.ff_layer_norm = layerNorm(2 * self._out_ent_feats)
             self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._out_ent_feats,
-                                                              d_hidden=4 * self._out_ent_feats,
-                                                              model_out_dim= 2 * self._out_ent_feats)
+                                                              d_hidden=8 * self._out_ent_feats,
+                                                              model_out_dim=2 * self._out_ent_feats)
         else:
             self.register_buffer('cat_fc', None)
             self.ff_layer_norm = layerNorm(self._out_ent_feats)
