@@ -128,9 +128,9 @@ class GDTLayer(nn.Module):
                 if self.cat_fc is not None:
                     catval = self.cat_fc(feat)
                     rst = rst.flatten(1)
-                    rst = torch.concat([catval, rst], dim=-1)
+                    rst = torch.cat([catval, rst], dim=-1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = torch.concat([rst, ff_rst], dim=-1)
+                    rst = torch.cat([rst, ff_rst], dim=-1)
                 else:
                     rst = rst.flatten(1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
@@ -305,9 +305,9 @@ class RGDTLayer(nn.Module):
                 if self.cat_fc is not None:
                     catval = self.cat_fc(ent_feat)
                     rst = rst.flatten(1)
-                    rst = torch.concat([catval, rst], dim=-1)
+                    rst = torch.cat([catval, rst], dim=-1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = torch.concat([rst, ff_rst], dim=-1)
+                    rst = torch.cat([rst, ff_rst], dim=-1)
                 else:
                     rst = rst.flatten(1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
