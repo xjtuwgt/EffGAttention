@@ -55,8 +55,8 @@ def citation_hyper_parameter_space():
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.05, 0.26, 0.025))}
     hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [4, 6, 7, 8, 9]}
     alpha = {'name': 'alpha', 'type': 'choice', 'values': list(np.arange(0.05, 0.21, 0.025))}
-    hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [128, 256]}
-    layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [2, 3]}
+    hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [256]}
+    layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [6]}
     # ++++++++++++++++++++++++++++++++++
     search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio,
                     hidden_dim, hop_num, alpha, layer_num]
