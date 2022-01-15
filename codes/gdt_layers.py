@@ -5,6 +5,7 @@ from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
+from torch.nn import BatchNorm1d as batchNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionWiseFeedForward, small_init_gain
@@ -22,6 +23,8 @@ class GDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
                  layer_num: int = 1,
+                 batch_norm: bool = False,
+                 layer_norm: bool = True,
                  residual: bool = True,
                  ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
@@ -50,8 +53,16 @@ class GDTLayer(nn.Module):
         else:
             self.register_buffer('res_fc', None)
 
-        self.graph_layer_norm = layerNorm(self._in_ent_feats)
-        self.ff_layer_norm = layerNorm(self._out_feats)
+        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.graph_layer_norm = layerNorm(self._in_ent_feats)
+            self.ff_layer_norm = layerNorm(self._out_feats)
+
+        if self.batch_norm:
+            self.graph_layer_ent_norm = batchNorm(self._in_ent_feats)
+            self.ff_layer_norm = batchNorm(self._out_feats)
+
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats,
                                                           d_hidden=4 * self._out_feats,
                                                           model_out_dim=self._out_feats)
@@ -153,6 +164,8 @@ class RGDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
                  layer_num: int = 1,
+                 batch_norm: bool = False,
+                 layer_norm: bool = True,
                  residual=True,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
@@ -186,10 +199,18 @@ class RGDTLayer(nn.Module):
         self.attn_drop = nn.Dropout(attn_drop)
         self.edge_drop = edge_drop
 
-        self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
-        self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
+        self.batch_norm = batch_norm
+        self.layer_norm = layer_norm
+        if self.layer_norm:
+            self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
+            self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
+            self.ff_layer_norm = layerNorm(self._out_ent_feats)
 
-        self.ff_layer_norm = layerNorm(self._out_ent_feats)
+        if self.batch_norm:
+            self.graph_layer_ent_norm = batchNorm(self._in_ent_feats)
+            self.graph_layer_rel_norm = batchNorm(self._in_rel_feats)
+            self.ff_layer_norm = batchNorm(self._out_ent_feats)
+
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_ent_feats,
                                                           d_hidden=4 * self._out_ent_feats,
                                                           model_out_dim=self._out_ent_feats)

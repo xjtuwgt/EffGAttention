@@ -99,6 +99,8 @@ def default_parser():
     parser.add_argument('--residual', type=boolean_string, default='false')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
     parser.add_argument('--concat', type=boolean_string, default='true')
+    parser.add_argument('--layerNorm', type=boolean_string, default='true')
+    parser.add_argument('--batchNorm', type=boolean_string, default='false')
     parser.add_argument('--stanford', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--gnn_hop_num', type=int, default=6)
