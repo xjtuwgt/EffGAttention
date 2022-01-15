@@ -43,10 +43,6 @@ class GDTLayer(nn.Module):
         self.attn_drop = nn.Dropout(attn_drop)
         self.edge_drop = edge_drop
         self.concat = concat
-        if concat:
-            residual = False
-
-        self.concat = concat
         self.residual = False if self.concat else residual
         if self.residual:
             if self._in_tail_feats != self._out_feats:
@@ -58,7 +54,7 @@ class GDTLayer(nn.Module):
 
         self.graph_layer_norm = layerNorm(self._in_ent_feats)
         if self.concat:
-            if self._in_tail_feats != self._out_feats:
+            if self._in_ent_feats != self._out_feats:
                 self.cat_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
             else:
                 self.cat_fc = Identity()
@@ -223,20 +219,20 @@ class RGDTLayer(nn.Module):
         self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
 
         if self.concat:
-            if self._in_tail_feats != self._out_feats:
-                self.cat_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
+            if self._in_ent_feats != self._out_ent_feats:
+                self.cat_fc = nn.Linear(self._in_tail_feats, self._out_ent_feats, bias=False)
             else:
                 self.cat_fc = Identity()
-            self.ff_layer_norm = layerNorm(2 * self._out_feats)
-            self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._out_feats,
-                                                              d_hidden=4 * self._out_feats,
-                                                              model_out_dim=self._out_feats)
+            self.ff_layer_norm = layerNorm(2 * self._out_ent_feats)
+            self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._out_ent_feats,
+                                                              d_hidden=4 * self._out_ent_feats,
+                                                              model_out_dim=self._out_ent_feats)
         else:
             self.register_buffer('cat_fc', None)
-            self.ff_layer_norm = layerNorm(self._out_feats)
-            self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats,
-                                                              d_hidden=4 * self._out_feats,
-                                                              model_out_dim=self._out_feats)
+            self.ff_layer_norm = layerNorm(self._out_ent_feats)
+            self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_ent_feats,
+                                                              d_hidden=4 * self._out_ent_feats,
+                                                              model_out_dim=self._out_ent_feats)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.ppr_diff = ppr_diff
         self.reset_parameters()
