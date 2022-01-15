@@ -114,7 +114,7 @@ def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, sc
 
 def main(args):
     args = complete_default_parser(args=args)
-    g, number_of_nodes, n_relations, n_classes, _, special_relation_dict = \
+    g, number_of_nodes, n_relations, n_classes, _, _, special_relation_dict = \
         citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5, rand_split=False)
     logger.info("Number of relations = {}".format(n_relations))
     args.num_classes = n_classes

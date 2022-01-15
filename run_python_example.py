@@ -75,6 +75,7 @@ from kge_codes.kge_utils import graph_to_triples, triple_train_valid_split
 from graph_data.citation_graph_data import citation_graph_reconstruction
 from codes.gnn_utils import neighbor_interaction_computation
 
+
 import dgl
 edges = torch.tensor([0, 1, 2, 1, 2, 0]), torch.tensor([1, 2, 0, 0, 1, 2])  # 边：2->3, 5->5, 3->0
 g = dgl.graph(edges)

@@ -33,7 +33,7 @@ def citation_graph_reconstruction(dataset: str):
     return graph, n_entities, n_relations, n_classes, n_feats
 
 
-def citation_train_valid_test(graph, data_type: str):
+def citation_train_valid_test(graph: DGLHeteroGraph, data_type: str):
     if data_type == 'train':
         data_mask = graph.ndata['train_mask']
     elif data_type == 'valid':
@@ -89,14 +89,13 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
     else:
         graph, n_entities, n_relations, n_classes, n_feats = \
             citation_graph_reconstruction(dataset=dataset)
-    graph, number_of_relations, special_relation_dict = construct_special_graph_dictionary(graph=graph,
-                                                                                           n_relations=n_relations,
-                                                                                           hop_num=hop_num)
+    graph, number_of_relations, special_node_dict, \
+    special_relation_dict = construct_special_graph_dictionary(graph=graph, n_relations=n_relations, hop_num=hop_num)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     number_of_nodes = graph.number_of_nodes()
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata.update({'nid': torch.arange(0, number_of_nodes, dtype=torch.long)})
-    return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_relation_dict
+    return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict
 
 
 def label_mask_drop(train_mask, drop_ratio: float = 0.05):
@@ -106,4 +105,3 @@ def label_mask_drop(train_mask, drop_ratio: float = 0.05):
     train_mask_clone = train_mask.clone()
     train_mask_clone[drop_idxes] = False
     return train_mask_clone
-
