@@ -57,9 +57,10 @@ def citation_hyper_parameter_space():
     alpha = {'name': 'alpha', 'type': 'choice', 'values': list(np.arange(0.05, 0.21, 0.025))}
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [256]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [6]}
+    epoch = {'name': 'epoch', 'type': 'choice', 'values': [500]}
     # ++++++++++++++++++++++++++++++++++
     search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio,
-                    hidden_dim, hop_num, alpha, layer_num]
+                    hidden_dim, hop_num, alpha, layer_num, epoch]
     search_space = dict((x['name'], x) for x in search_space)
     return search_space
 
@@ -85,4 +86,5 @@ def citation_random_search_hyper_tunner(args, search_space: dict, seed: int):
     args.hidden_dim = parameter_dict['hidden_dim']
     args.weight_decay = parameter_dict['weight_decay']
     args.seed = parameter_dict['seed']
+    args.num_train_epochs = parameter_dict['epoch']
     return args, parameter_dict
