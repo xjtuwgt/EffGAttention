@@ -211,9 +211,10 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
         nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
-        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+        gain = small_init_gain(d_in=self._in_rel_feats, d_out=self._out_ent_feats) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
 
     def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
         with graph.local_scope():
@@ -229,7 +230,6 @@ class RGDTLayer(nn.Module):
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.srcdata.update({'k': feat_head, 'v': feat_enti})  # (num_src_edge, num_heads, head_dim)
             graph.dstdata.update({'q': feat_tail})
-            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
             graph.apply_edges(fn.u_mul_v('k', 'q', 'e'))
             # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -285,5 +285,5 @@ class RGDTLayer(nn.Module):
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
