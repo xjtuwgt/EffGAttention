@@ -5,7 +5,6 @@ from dgl.nn.pytorch.utils import Identity
 import dgl.function as fn
 from dgl.nn.functional import edge_softmax
 from torch.nn import LayerNorm as layerNorm
-from torch.nn import BatchNorm1d as batchNorm
 from dgl.base import DGLError
 from dgl.utils import expand_as_pair
 from codes.gnn_utils import PositionWiseFeedForward, small_init_gain
@@ -117,7 +116,7 @@ class GDTLayer(nn.Module):
                 rst = self.feat_drop(rst) + resval
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = self.feat_drop(ff_rst) + rst  # residual
+            rst = ff_rst + rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
@@ -267,7 +266,7 @@ class RGDTLayer(nn.Module):
                 rst = self.feat_drop(rst) + resval
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = self.feat_drop(ff_rst) + rst  # residual
+            rst = ff_rst + rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
