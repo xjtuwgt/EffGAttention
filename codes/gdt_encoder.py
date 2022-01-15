@@ -17,16 +17,14 @@ class GDTEncoder(nn.Module):
                                                   num_heads=self.config.head_num,
                                                   hop_num=self.config.gnn_hop_num,
                                                   alpha=self.config.alpha,
-                                                  concat=self.config.concat,
                                                   layer_num=self.config.layers,
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
                                                   edge_drop=self.config.edge_drop,
                                                   residual=self.config.residual,
                                                   ppr_diff=self.config.ppr_diff))
-        hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
-            self.graph_encoder.append(module=GDTLayer(in_ent_feats=hidden_dim,
+            self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.hidden_dim,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,
@@ -35,10 +33,9 @@ class GDTEncoder(nn.Module):
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
-                                                      concat=self.config.concat,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.classifier = nn.Linear(in_features=hidden_dim, out_features=self.config.num_classes)
+        self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -82,12 +79,10 @@ class RGDTEncoder(nn.Module):
                                                    feat_drop=self.config.feat_drop,
                                                    attn_drop=self.config.attn_drop,
                                                    edge_drop=self.config.edge_drop,
-                                                   concat=self.config.concat,
                                                    residual=self.config.residual,
                                                    ppr_diff=self.config.ppr_diff))
-        hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
-            self.graph_encoder.append(module=GDTLayer(in_ent_feats=hidden_dim,
+            self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.hidden_dim,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,
@@ -96,10 +91,9 @@ class RGDTEncoder(nn.Module):
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
                                                       edge_drop=self.config.edge_drop,
-                                                      concat=self.config.concat,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.classifier = nn.Linear(in_features=hidden_dim, out_features=self.config.num_classes)
+        self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
 
