@@ -50,16 +50,17 @@ def rand_search_parameter(space: dict):
 def citation_hyper_parameter_space():
     learning_rate = {'name': 'learning_rate', 'type': 'choice', 'values': [1e-4, 2e-4, 3e-4, 1e-3, 2e-3, 5e-3]}
     weight_decay = {'name': 'weight_decay', 'type': 'choice', 'values': [1e-5, 5e-4]}
-    attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.25, 0.45, 0.025))}
-    feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.25, 0.35, 0.025))}
+    attn_drop_ratio = {'name': 'attn_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.1, 0.56, 0.025))}
+    feat_drop_ratio = {'name': 'feat_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.1, 0.56, 0.025))}
     edge_drop_ratio = {'name': 'edge_drop_ratio', 'type': 'choice', 'values': list(np.arange(0.05, 0.26, 0.025))}
-    hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [4, 6, 7, 8, 9]}
+    hop_num = {'name': 'hop_num', 'type': 'choice', 'values': [6, 7, 8, 9]}
     alpha = {'name': 'alpha', 'type': 'choice', 'values': list(np.arange(0.05, 0.21, 0.025))}
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [64]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [2]}
+    norm_type = {'name': 'layer_num', 'type': 'choice', 'values': ['batch', 'layer']}
     epoch = {'name': 'epoch', 'type': 'choice', 'values': [500]}
     # ++++++++++++++++++++++++++++++++++
-    search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio,
+    search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio, norm_type,
                     hidden_dim, hop_num, alpha, layer_num, epoch]
     search_space = dict((x['name'], x) for x in search_space)
     return search_space
@@ -87,4 +88,5 @@ def citation_random_search_hyper_tunner(args, search_space: dict, seed: int):
     args.weight_decay = parameter_dict['weight_decay']
     args.seed = parameter_dict['seed']
     args.num_train_epochs = parameter_dict['epoch']
+    args.norm_type = parameter_dict['norm_type']
     return args, parameter_dict

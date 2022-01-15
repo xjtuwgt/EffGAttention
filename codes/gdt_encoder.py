@@ -21,8 +21,8 @@ class GDTEncoder(nn.Module):
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
                                                   edge_drop=self.config.edge_drop,
-                                                  batch_norm=self.config.batchNorm,
-                                                  layer_norm=self.config.layerNorm,
+                                                  batch_norm=self.config.norm_type == 'batch',
+                                                  layer_norm=self.config.norm_type == 'layer',
                                                   residual=self.config.residual,
                                                   ppr_diff=self.config.ppr_diff))
         for _ in range(1, self.config.layers):
@@ -35,8 +35,8 @@ class GDTEncoder(nn.Module):
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
-                                                      batch_norm=self.config.batchNorm,
-                                                      layer_norm=self.config.layerNorm,
+                                                      batch_norm=self.config.norm_type == 'batch',
+                                                      layer_norm=self.config.norm_type == 'layer',
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
@@ -80,8 +80,8 @@ class RGDTEncoder(nn.Module):
                                                    hop_num=self.config.gnn_hop_num,
                                                    alpha=self.config.alpha,
                                                    layer_num=self.config.layers,
-                                                   batch_norm=self.config.batchNorm,
-                                                   layer_norm=self.config.layerNorm,
+                                                   batch_norm=self.config.norm_type == 'batch',
+                                                   layer_norm=self.config.norm_type == 'layer',
                                                    feat_drop=self.config.feat_drop,
                                                    attn_drop=self.config.attn_drop,
                                                    edge_drop=self.config.edge_drop,
@@ -97,8 +97,8 @@ class RGDTEncoder(nn.Module):
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
                                                       edge_drop=self.config.edge_drop,
-                                                      batch_norm=self.config.batchNorm,
-                                                      layer_norm=self.config.layerNorm,
+                                                      batch_norm=self.config.norm_type == 'batch',
+                                                      layer_norm=self.config.norm_type == 'layer',
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
