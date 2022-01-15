@@ -60,7 +60,7 @@ class GDTLayer(nn.Module):
             self.ff_layer_norm = layerNorm(self._out_feats)
 
         if self.batch_norm:
-            self.graph_layer_ent_norm = batchNorm(self._in_ent_feats)
+            self.graph_layer_norm = batchNorm(self._in_ent_feats)
             self.ff_layer_norm = batchNorm(self._out_feats)
 
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats,
