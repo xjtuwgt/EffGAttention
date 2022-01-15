@@ -61,7 +61,7 @@ class GDTLayer(nn.Module):
             self.ff_layer_norm = layerNorm(2 * self._out_feats)
             self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._out_feats,
                                                               d_hidden=4 * self._out_feats,
-                                                              model_out_dim=self._out_feats)
+                                                              model_out_dim=2*self._out_feats)
         else:
             self.register_buffer('cat_fc', None)
             self.ff_layer_norm = layerNorm(self._out_feats)
@@ -130,7 +130,7 @@ class GDTLayer(nn.Module):
                     rst = rst.flatten(1)
                     rst = torch.concat([catval, rst], dim=-1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = torch.concat([rst, ff_rst])
+                    rst = torch.concat([rst, ff_rst], dim=-1)
                 else:
                     rst = rst.flatten(1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
@@ -226,7 +226,7 @@ class RGDTLayer(nn.Module):
             self.ff_layer_norm = layerNorm(2 * self._out_ent_feats)
             self.feed_forward_layer = PositionWiseFeedForward(model_dim=2 * self._out_ent_feats,
                                                               d_hidden=4 * self._out_ent_feats,
-                                                              model_out_dim=self._out_ent_feats)
+                                                              model_out_dim= 2 * self._out_ent_feats)
         else:
             self.register_buffer('cat_fc', None)
             self.ff_layer_norm = layerNorm(self._out_ent_feats)
@@ -307,7 +307,7 @@ class RGDTLayer(nn.Module):
                     rst = rst.flatten(1)
                     rst = torch.concat([catval, rst], dim=-1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = torch.concat([rst, ff_rst])
+                    rst = torch.concat([rst, ff_rst], dim=-1)
                 else:
                     rst = rst.flatten(1)
                     ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
@@ -321,13 +321,6 @@ class RGDTLayer(nn.Module):
                 rst = rst.flatten(1)
                 ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
                 rst = self.feat_drop(ff_rst) + rst  # residual
-
-            # print(rst.shape)
-            rst = rst.flatten(1)
-            # +++++++++++++++++++++++++++++++++++++++
-            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = self.feat_drop(ff_rst) + rst  # residual
-            # +++++++++++++++++++++++++++++++++++++++
             if get_attention:
                 return rst, graph.edata['a']
             else:
