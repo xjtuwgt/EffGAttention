@@ -57,7 +57,7 @@ def citation_hyper_parameter_space():
     alpha = {'name': 'alpha', 'type': 'choice', 'values': list(np.arange(0.05, 0.21, 0.025))}
     hidden_dim = {'name': 'hidden_dim', 'type': 'choice', 'values': [64]}
     layer_num = {'name': 'layer_num', 'type': 'choice', 'values': [2]}
-    norm_type = {'name': 'layer_num', 'type': 'choice', 'values': ['batch', 'layer']}
+    norm_type = {'name': 'norm_type', 'type': 'choice', 'values': ['batch', 'layer']}
     epoch = {'name': 'epoch', 'type': 'choice', 'values': [500]}
     # ++++++++++++++++++++++++++++++++++
     search_space = [learning_rate, weight_decay, attn_drop_ratio, feat_drop_ratio, edge_drop_ratio, norm_type,
