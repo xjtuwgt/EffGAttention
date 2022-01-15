@@ -2,9 +2,10 @@ import numpy as np
 import time
 import torch
 from codes.gdt_encoder import RGDTEncoder
+from codes.gdt_v2_encoder import RGDTEncoder as RGDTEncoderV2
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
 from codes.utils import seed_everything
@@ -151,7 +152,10 @@ def main(args):
                                                                     seed=args.seed + 1)
         # create model
         seed_everything(seed=args.seed)
-        model = RGDTEncoder(config=args)
+        if args.encoder_v2:
+            model = RGDTEncoderV2(config=args)
+        else:
+            model = RGDTEncoder(config=args)
         model.to(args.device)
         model.init_graph_ember(ent_emb=features, ent_freeze=True)
         # ++++++++++++++++++++++++++++++++++++
