@@ -267,7 +267,7 @@ class RGDTLayer(nn.Module):
                 rst = self.feat_drop(rst) + resval
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = self.feat_drop(ff_rst) + rst  # residual
+            rst = ff_rst + rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
@@ -285,5 +285,5 @@ class RGDTLayer(nn.Module):
                 graph.edata['a_temp'] = self.attn_drop(attentions)
                 graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
                 feat = graph.dstdata.pop('h')
-                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
             return feat
