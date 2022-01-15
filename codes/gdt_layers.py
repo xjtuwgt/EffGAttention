@@ -209,7 +209,7 @@ class RGDTLayer(nn.Module):
             else:
                 self.res_fc = Identity()
         else:
-            self.register_buffer('res_fc_ent', None)
+            self.register_buffer('res_fc', None)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
         self.feat_drop = nn.Dropout(feat_drop)
         self.attn_drop = nn.Dropout(attn_drop)
@@ -254,6 +254,8 @@ class RGDTLayer(nn.Module):
         nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
         if isinstance(self.res_fc, nn.Linear):
             nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+        if isinstance(self.cat_fc, nn.Linear):
+            nn.init.xavier_normal_(self.cat_fc.weight, gain=gain)
 
     def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
         with graph.local_scope():
