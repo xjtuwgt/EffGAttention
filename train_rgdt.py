@@ -150,6 +150,10 @@ def main(args):
     for _ in range(num_of_experiments):
         args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
                                                                     seed=args.seed + 1)
+        logging.info('Model Hyper-Parameter Configuration:')
+        for key, value in vars(args).items():
+            logging.info('Hyper-Para {}: {}'.format(key, value))
+        logging.info('*' * 75)
         # create model
         seed_everything(seed=args.seed)
         if args.encoder_v2:
