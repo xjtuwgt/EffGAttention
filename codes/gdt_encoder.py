@@ -1,8 +1,6 @@
 from codes.gdt_layers import GDTLayer, RGDTLayer
 from torch import nn
-from torch.nn import LayerNorm
 from torch import Tensor
-from dgl.nn.pytorch.utils import Identity
 from codes.gnn_utils import EmbeddingLayer
 import torch
 
