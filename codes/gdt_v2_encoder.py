@@ -13,6 +13,7 @@ class GDTEncoder(nn.Module):
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
                                                   out_ent_feats=self.config.hidden_dim,
                                                   num_heads=self.config.head_num,
+                                                  layer_idx=1,
                                                   hop_num=self.config.gnn_hop_num,
                                                   alpha=self.config.alpha,
                                                   concat=self.config.concat,
@@ -27,6 +28,7 @@ class GDTEncoder(nn.Module):
             self.graph_encoder.append(module=GDTLayer(in_ent_feats=hidden_dim,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
+                                                      layer_idx=_ + 1,
                                                       hop_num=self.config.gnn_hop_num,
                                                       alpha=self.config.alpha,
                                                       edge_drop=self.config.edge_drop,
@@ -35,6 +37,7 @@ class GDTEncoder(nn.Module):
                                                       attn_drop=self.config.attn_drop,
                                                       concat=self.config.concat,
                                                       residual=self.config.residual,
+                                                      rescale_res=self.config.rescale_res,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
@@ -73,6 +76,7 @@ class RGDTEncoder(nn.Module):
         self.graph_encoder.append(module=RGDTLayer(in_ent_feats=ent_in_dim,
                                                    out_ent_feats=self.config.hidden_dim,
                                                    in_rel_feats=rel_in_dim,
+                                                   layer_idx=1,
                                                    num_heads=self.config.head_num,
                                                    hop_num=self.config.gnn_hop_num,
                                                    alpha=self.config.alpha,
@@ -86,6 +90,7 @@ class RGDTEncoder(nn.Module):
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
             self.graph_encoder.append(module=GDTLayer(in_ent_feats=hidden_dim,
+                                                      layer_idx=_+1,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,
@@ -96,6 +101,7 @@ class RGDTEncoder(nn.Module):
                                                       edge_drop=self.config.edge_drop,
                                                       concat=self.config.concat,
                                                       residual=self.config.residual,
+                                                      rescale_res=self.config.rescale_res,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()

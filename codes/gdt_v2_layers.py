@@ -21,12 +21,15 @@ class GDTLayer(nn.Module):
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
+                 layer_idx: int = 1,
                  layer_num: int = 1,
                  residual: bool = True,
+                 rescale_res: bool = False,
                  concat: bool = False,
                  ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
 
+        self.layer_idx = layer_idx
         self.layer_num = layer_num
         self._hop_num = hop_num
         self._alpha = alpha
@@ -44,6 +47,7 @@ class GDTLayer(nn.Module):
         self.edge_drop = edge_drop
         self.concat = concat
         self.residual = False if self.concat else residual
+        self.rescale_res = rescale_res
         if self.residual:
             if self._in_tail_feats != self._out_feats:
                 self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
@@ -68,6 +72,17 @@ class GDTLayer(nn.Module):
             self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats,
                                                               d_hidden=4 * self._out_feats,
                                                               model_out_dim=self._out_feats)
+        if self.rescale_res:
+            self.graph_a_i = math.sqrt((2.0 * self.layer_idx - 2 + self.layer_num)
+                            / (2.0 * self.layer_idx - 1 + self.layer_num))
+            self.graph_b_i = math.sqrt(1.0 / (2.0 * self.layer_idx - 1 + self.layer_num))
+            self.ff_a_i = math.sqrt((2.0 * self.layer_idx - 1 + self.layer_num)
+                            / (2.0 * self.layer_idx + self.layer_num))
+            self.ff_b_i = math.sqrt(1.0 / (2.0 * self.layer_idx + self.layer_num))
+        else:
+            self.graph_a_i = self.graph_b_i = 1.0
+            self.ff_a_i = self.ff_b_i = 1.0
+
         self.ppr_diff = ppr_diff
         self.reset_parameters()
 
@@ -124,26 +139,21 @@ class GDTLayer(nn.Module):
                 graph.update_all(fn.u_mul_e('v', 'a', 'm'), fn.sum('m', 'v'))
                 rst = graph.dstdata.pop('v')
 
-            if self.concat:
-                if self.cat_fc is not None:
-                    catval = self.cat_fc(feat)
-                    rst = rst.flatten(1)
-                    rst = torch.cat([catval, rst], dim=-1)
-                    ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = torch.cat([rst, ff_rst], dim=-1)
-                else:
-                    rst = rst.flatten(1)
-                    ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = self.feat_drop(ff_rst) + rst  # residual
+            if self.concat and (self.cat_fc is not None):
+                catval = self.cat_fc(feat)
+                rst = rst.flatten(1)
+                rst = torch.cat([catval, rst], dim=-1)
+                ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+                rst = torch.cat([rst, ff_rst], dim=-1)
             else:
                 # residual
                 if self.res_fc is not None:
                     # this part uses feat (very important to prevent over-smoothing)
                     resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
-                    rst = self.feat_drop(rst) + resval
+                    rst = self.graph_b_i * self.feat_drop(rst) + self.graph_a_i * resval
                 rst = rst.flatten(1)
                 ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                rst = self.feat_drop(ff_rst) + rst  # residual
+                rst = self.ff_b_i * self.feat_drop(ff_rst) + self.ff_a_i * rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
@@ -179,12 +189,15 @@ class RGDTLayer(nn.Module):
                  feat_drop: float = 0.1,
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
+                 layer_idx: int = 1,
                  layer_num: int = 1,
                  residual=True,
+                 rescale_res: bool = False,
                  concat: bool = False,
                  ppr_diff=True):
         super(RGDTLayer, self).__init__()
 
+        self.layer_idx = layer_idx
         self.layer_num = layer_num
         self._in_ent_feats = in_ent_feats
         self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
@@ -203,6 +216,7 @@ class RGDTLayer(nn.Module):
 
         self.concat = concat
         self.residual = False if self.concat else residual
+        self.rescale_res = rescale_res
         if self.residual:
             if in_ent_feats != out_ent_feats:
                 self.res_fc = nn.Linear(in_ent_feats, self._num_heads * self._head_dim, bias=False)
@@ -234,6 +248,16 @@ class RGDTLayer(nn.Module):
                                                               d_hidden=4 * self._out_ent_feats,
                                                               model_out_dim=self._out_ent_feats)
         # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        if self.rescale_res:
+            self.graph_a_i = math.sqrt((2.0 * self.layer_idx - 2 + self.layer_num)
+                            / (2.0 * self.layer_idx - 1 + self.layer_num))
+            self.graph_b_i = math.sqrt(1.0 / (2.0 * self.layer_idx - 1 + self.layer_num))
+            self.ff_a_i = math.sqrt((2.0 * self.layer_idx - 1 + self.layer_num)
+                            / (2.0 * self.layer_idx + self.layer_num))
+            self.ff_b_i = math.sqrt(1.0 / (2.0 * self.layer_idx + self.layer_num))
+        else:
+            self.graph_a_i = self.graph_b_i = 1.0
+            self.ff_a_i = self.ff_b_i = 1.0
         self.ppr_diff = ppr_diff
         self.reset_parameters()
 
@@ -301,26 +325,21 @@ class RGDTLayer(nn.Module):
                 graph.edata['a'] = self.attn_drop(a_value)
                 graph.update_all(fn.u_mul_e('v', 'a', 'm'), fn.sum('m', 'v'))
                 rst = graph.dstdata['v']
-            if self.concat:
-                if self.cat_fc is not None:
-                    catval = self.cat_fc(ent_feat)
-                    rst = rst.flatten(1)
-                    rst = torch.cat([catval, rst], dim=-1)
-                    ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = torch.cat([rst, ff_rst], dim=-1)
-                else:
-                    rst = rst.flatten(1)
-                    ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                    rst = self.feat_drop(ff_rst) + rst  # residual
+            if self.concat and (self.cat_fc is not None):
+                catval = self.cat_fc(ent_feat)
+                rst = rst.flatten(1)
+                rst = torch.cat([catval, rst], dim=-1)
+                ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+                rst = torch.cat([rst, ff_rst], dim=-1)
             else:
                 # residual
                 if self.res_fc is not None:
                     # this part uses feat (very important to prevent over-smoothing)
                     resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
-                    rst = self.feat_drop(rst) + resval
+                    rst = self.graph_b_i * self.feat_drop(rst) + self.graph_a_i * resval
                 rst = rst.flatten(1)
                 ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-                rst = self.feat_drop(ff_rst) + rst  # residual
+                rst = self.ff_b_i * self.feat_drop(ff_rst) + self.ff_a_i * rst  # residual
             if get_attention:
                 return rst, graph.edata['a']
             else:
