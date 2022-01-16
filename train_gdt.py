@@ -2,6 +2,7 @@ import numpy as np
 import time
 import torch
 from codes.gdt_encoder import GDTEncoder
+from codes.gdt_v2_encoder import GDTEncoder as GDTEncoderV2
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
@@ -151,6 +152,10 @@ def main(args):
         logging.info('*' * 75)
         # create model
         seed_everything(seed=args.seed)
+        if args.encoder_v2:
+            model = GDTEncoderV2(config=args)
+        else:
+            model = GDTEncoder(config=args)
         model = GDTEncoder(config=args)
         model.to(args.device)
         # ++++++++++++++++++++++++++++++++++++
