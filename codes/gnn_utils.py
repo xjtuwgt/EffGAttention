@@ -6,7 +6,7 @@ import dgl.function as fn
 from torch import nn
 import torch.nn.functional as F
 from dgl.nn.pytorch.utils import Identity
-from torch.nn import BatchNorm1d
+from torch.nn import BatchNorm1d, LayerNorm
 from torch import Tensor, LongTensor
 
 """
@@ -143,13 +143,14 @@ class PositionWiseFeedForward(nn.Module):
         self.hidden_dim = d_hidden
         self.model_out_dim = model_out_dim
         self.w_1 = nn.Linear(model_dim, d_hidden)
+        self.batch_norm = LayerNorm(d_hidden)
         self.w_2 = nn.Linear(d_hidden, model_out_dim)
         self.dropout = nn.Dropout(dropout)
         self.layer_num = layer_num
         self.init()
 
     def forward(self, x):
-        return self.w_2(self.dropout(F.relu(self.w_1(x))))
+        return self.w_2(self.dropout(F.relu(self.batch_norm(self.w_1(x)))))
 
     def init(self):
         gain = small_init_gain(d_in=self.model_dim, d_out=self.hidden_dim) / math.sqrt(self.layer_num)
