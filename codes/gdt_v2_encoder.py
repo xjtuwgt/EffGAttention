@@ -2,6 +2,8 @@ from codes.gdt_v2_layers import GDTLayer, RGDTLayer
 from torch import nn
 from torch import Tensor
 from codes.gnn_utils import EmbeddingLayer
+import torch.nn.functional as F
+from torch.nn import BatchNorm1d
 import torch
 
 
@@ -103,6 +105,8 @@ class RGDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       rescale_res=self.config.rescale_res,
                                                       ppr_diff=self.config.ppr_diff))
+        self.norm_layer = BatchNorm1d(num_features=hidden_dim)
+        self.drop_out = nn.Dropout(0.1)
         self.classifier = nn.Linear(in_features=hidden_dim, out_features=self.config.num_classes)
         self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
@@ -124,5 +128,5 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(h)
+        logits = self.classifier(self.drop_out(F.relu(self.norm_layer(h))))
         return logits
