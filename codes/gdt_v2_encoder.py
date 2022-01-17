@@ -126,5 +126,5 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(F.relu(h))
+        logits = self.classifier(h)
         return logits
