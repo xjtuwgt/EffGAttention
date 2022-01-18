@@ -22,11 +22,13 @@ class GDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
                  layer_num: int = 1,
+                 layer_idx: int = 1,
                  rescale_res: bool = False,
                  residual: bool = True,
                  ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
 
+        self.layer_idx = layer_idx
         self.layer_num = layer_num
         self._hop_num = hop_num
         self._alpha = alpha
@@ -165,11 +167,13 @@ class RGDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
                  layer_num: int = 1,
+                 layer_idx: int = 1,
                  rescale_res: bool = False,
                  residual: bool = True,
                  ppr_diff: bool = True):
         super(RGDTLayer, self).__init__()
 
+        self.layer_idx = layer_idx
         self.layer_num = layer_num
         self._in_ent_feats = in_ent_feats
         self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
