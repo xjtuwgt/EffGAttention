@@ -23,6 +23,7 @@ class GDTEncoder(nn.Module):
                                                   feat_drop=self.config.feat_drop,
                                                   attn_drop=self.config.attn_drop,
                                                   edge_drop=self.config.edge_drop,
+                                                  rescale_res=self.config.rescale_res,
                                                   residual=self.config.residual,
                                                   ppr_diff=self.config.ppr_diff))
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim

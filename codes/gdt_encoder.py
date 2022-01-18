@@ -20,6 +20,7 @@ class GDTEncoder(nn.Module):
                                                   attn_drop=self.config.attn_drop,
                                                   edge_drop=self.config.edge_drop,
                                                   residual=self.config.residual,
+                                                  rescale_res=self.config.rescale_res,
                                                   ppr_diff=self.config.ppr_diff))
         for _ in range(1, self.config.layers):
             self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.hidden_dim,
@@ -31,6 +32,7 @@ class GDTEncoder(nn.Module):
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
+                                                      rescale_res=self.config.rescale_res,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
@@ -77,6 +79,7 @@ class RGDTEncoder(nn.Module):
                                                    feat_drop=self.config.feat_drop,
                                                    attn_drop=self.config.attn_drop,
                                                    edge_drop=self.config.edge_drop,
+                                                   rescale_res=self.config.rescale_res,
                                                    residual=self.config.residual,
                                                    ppr_diff=self.config.ppr_diff))
         for _ in range(1, self.config.layers):
@@ -89,6 +92,7 @@ class RGDTEncoder(nn.Module):
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
                                                       edge_drop=self.config.edge_drop,
+                                                      rescale_res=self.config.rescale_res,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
         self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)

@@ -22,6 +22,7 @@ class GDTLayer(nn.Module):
                  attn_drop: float = 0.1,
                  edge_drop: float = 0.1,
                  layer_num: int = 1,
+                 rescale_res: bool = False,
                  residual: bool = True,
                  ppr_diff: bool = True):
         super(GDTLayer, self).__init__()
@@ -42,6 +43,7 @@ class GDTLayer(nn.Module):
         self.attn_drop = nn.Dropout(attn_drop)
         self.edge_drop = edge_drop
         self.residual = residual
+        self.rescale_res = rescale_res
         if self.residual:
             if self._in_tail_feats != self._out_feats:
                 self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
@@ -55,6 +57,16 @@ class GDTLayer(nn.Module):
         self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats,
                                                           d_hidden=4 * self._out_feats,
                                                           model_out_dim=self._out_feats)
+        if self.rescale_res:
+            self.graph_a_i = math.sqrt((2.0 * self.layer_idx - 2 + self.layer_num)
+                            / (2.0 * self.layer_idx - 1 + self.layer_num))
+            self.graph_b_i = math.sqrt(1.0 / (2.0 * self.layer_idx - 1 + self.layer_num))
+            self.ff_a_i = math.sqrt((2.0 * self.layer_idx - 1 + self.layer_num)
+                            / (2.0 * self.layer_idx + self.layer_num))
+            self.ff_b_i = math.sqrt(1.0 / (2.0 * self.layer_idx + self.layer_num))
+        else:
+            self.graph_a_i = self.graph_b_i = 1.0
+            self.ff_a_i = self.ff_b_i = 1.0
         self.ppr_diff = ppr_diff
         self.reset_parameters()
 
@@ -113,10 +125,10 @@ class GDTLayer(nn.Module):
             if self.res_fc is not None:
                 # this part uses feat (very important to prevent over-smoothing)
                 resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
-                rst = self.feat_drop(rst) + resval
+                rst = self.graph_b_i * self.feat_drop(rst) + self.graph_a_i * resval
             rst = rst.flatten(1)
             ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
-            rst = ff_rst + rst  # residual
+            rst = self.ff_b_i * ff_rst + self.ff_a_i * rst  # residual
 
             if get_attention:
                 return rst, graph.edata['a']
