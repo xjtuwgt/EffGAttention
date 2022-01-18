@@ -143,7 +143,6 @@ class PositionWiseFeedForward(nn.Module):
         self.hidden_dim = d_hidden
         self.model_out_dim = model_out_dim
         self.w_1 = nn.Linear(model_dim, d_hidden)
-        self.batch_norm = LayerNorm(d_hidden)
         self.w_2 = nn.Linear(d_hidden, model_out_dim)
         self.dropout = nn.Dropout(dropout)
         self.layer_num = layer_num
@@ -178,7 +177,7 @@ class LBRLayer(nn.Module):
         nn.init.xavier_normal_(self.w_1.weight, gain=gain)
 
     def forward(self, x):
-        return self.dropout(F.relu(self.batch_norm(self.w_1(x))))
+        return self.dropout(F.relu(self.w_1(x)))
 
 
 class MLPReadout(nn.Module):
