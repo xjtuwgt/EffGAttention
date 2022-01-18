@@ -149,7 +149,7 @@ class PositionWiseFeedForward(nn.Module):
         self.init()
 
     def forward(self, x):
-        return self.w_2(self.dropout(F.relu(self.batch_norm(self.w_1(x)))))
+        return self.w_2(self.dropout(F.gelu(self.w_1(x))))
 
     def init(self):
         gain = small_init_gain(d_in=self.model_dim, d_out=self.hidden_dim) / math.sqrt(self.layer_num)
@@ -177,7 +177,7 @@ class LBRLayer(nn.Module):
         nn.init.xavier_normal_(self.w_1.weight, gain=gain)
 
     def forward(self, x):
-        return self.dropout(F.relu(self.w_1(x)))
+        return self.dropout(F.relu(self.batch_norm(self.w_1(x))))
 
 
 class MLPReadout(nn.Module):
