@@ -1,6 +1,8 @@
 import dgl
 import numpy as np
 import torch
+from torch import nn
+from codes.gnn_utils import small_init_gain
 from dgl.sampling import sample_neighbors
 from torch import Tensor
 from time import time
@@ -155,6 +157,20 @@ def single_node_sub_graph_extractor(graph, neighbors_dict: dict):
     anchor_ids = neighbors_dict['anchor'][0]
     sub_graph = dgl.node_subgraph(graph=graph, nodes=anchor_ids)
     return sub_graph
+
+
+def OON_Initialization(oon_num: int, num_feats: int, OON: str):
+    if OON == 'zero':
+        added_node_features = torch.zeros((oon_num, num_feats), dtype=torch.float)
+    elif OON == 'one':
+        added_node_features = torch.ones((oon_num, num_feats), dtype=torch.float)
+    elif OON == 'rand':
+        initial_weight = small_init_gain(d_in=num_feats, d_out=num_feats)
+        added_node_features = torch.zeros((oon_num, num_feats), dtype=torch.float)
+        added_node_features = nn.init.xavier_normal_(added_node_features.data.unsqueeze(0), gain=initial_weight)
+    else:
+        raise 'OON mode {} is not supported'.format(OON)
+    return added_node_features
 
 
 def cls_node_addition(subgraph, cls_parent_node_id: int, special_relation_dict: dict):

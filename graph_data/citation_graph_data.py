@@ -3,6 +3,7 @@ from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
 import copy
 from dgl import DGLHeteroGraph
 import dgl
+from codes.graph_utils import OON_Initialization
 from codes.graph_utils import construct_special_graph_dictionary, add_relation_ids_to_graph, add_self_loop_in_graph
 import numpy as np
 from codes.utils import IGNORE_IDX
@@ -82,7 +83,7 @@ def citation_graph_rand_split_construction(dataset: str):
     return new_graph, n_entities, n_relations, n_classes, n_feats
 
 
-def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=False):
+def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=False, OON='zero'):
     print('Bi-directional homogeneous graph: {}'.format(dataset))
     if rand_split:
         graph, n_entities, n_relations, n_classes, n_feats = \
@@ -103,7 +104,8 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     if number_of_added_nodes > 0:
         node_features = graph.ndata['feat']
-        added_node_features = torch.zeros((number_of_added_nodes, node_features.shape[1]), dtype=torch.float)
+        added_node_features = OON_Initialization(oon_num=number_of_added_nodes, num_feats=node_features.shape[1],
+                                                 OON=OON)
         graph.ndata['feat'][-2:] = added_node_features
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     number_of_nodes = graph.number_of_nodes()
