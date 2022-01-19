@@ -1,16 +1,16 @@
-from codes.gdt_v2_layers import GDTLayer, RGDTLayer
+from codes.gdt_v2_layers import GDTLayerV2, RGDTLayerV2
 from torch import nn
 from torch import Tensor
 from codes.gnn_utils import EmbeddingLayer, LinearClassifier
 import torch
 
 
-class GDTEncoder(nn.Module):
+class GDTEncoderV2(nn.Module):
     def __init__(self, config):
-        super(GDTEncoder, self).__init__()
+        super(GDTEncoderV2, self).__init__()
         self.config = config
         self.graph_encoder = nn.ModuleList()
-        self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
+        self.graph_encoder.append(module=GDTLayerV2(in_ent_feats=self.config.node_emb_dim,
                                                   out_ent_feats=self.config.hidden_dim,
                                                   num_heads=self.config.head_num,
                                                   layer_idx=1,
@@ -27,7 +27,7 @@ class GDTEncoder(nn.Module):
 
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
-            self.graph_encoder.append(module=GDTLayer(in_ent_feats=hidden_dim,
+            self.graph_encoder.append(module=GDTLayerV2(in_ent_feats=hidden_dim,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
                                                       layer_idx=_ + 1,
@@ -49,9 +49,9 @@ class GDTEncoder(nn.Module):
         return h
 
 
-class RGDTEncoder(nn.Module):
+class RGDTEncoderV2(nn.Module):
     def __init__(self, config):
-        super(RGDTEncoder, self).__init__()
+        super(RGDTEncoderV2, self).__init__()
         self.config = config
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
         if self.config.node_emb_dim == self.config.rel_emb_dim:
@@ -68,7 +68,7 @@ class RGDTEncoder(nn.Module):
 
         ent_in_dim = self.config.node_emb_dim
         self.graph_encoder = nn.ModuleList()
-        self.graph_encoder.append(module=RGDTLayer(in_ent_feats=ent_in_dim,
+        self.graph_encoder.append(module=RGDTLayerV2(in_ent_feats=ent_in_dim,
                                                    out_ent_feats=self.config.hidden_dim,
                                                    in_rel_feats=rel_in_dim,
                                                    layer_idx=1,
@@ -84,7 +84,7 @@ class RGDTEncoder(nn.Module):
                                                    ppr_diff=self.config.ppr_diff))
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
-            self.graph_encoder.append(module=GDTLayer(in_ent_feats=hidden_dim,
+            self.graph_encoder.append(module=GDTLayerV2(in_ent_feats=hidden_dim,
                                                       layer_idx=_+1,
                                                       out_ent_feats=self.config.hidden_dim,
                                                       num_heads=self.config.head_num,
@@ -121,9 +121,9 @@ class GraphNodeClassification(nn.Module):
         super(GraphNodeClassification, self).__init__()
         self.config = config
         if self.config.relation_encoder:
-            self.graph_encoder = RGDTEncoder(config=self.config)
+            self.graph_encoder = RGDTEncoderV2(config=self.config)
         else:
-            self.graph_encoder = GDTEncoder(config=self.config)
+            self.graph_encoder = GDTEncoderV2(config=self.config)
         self.classifier = LinearClassifier(model_dim=self.config.hidden_dim, num_of_classes=self.config.num_classes)
 
     def forward(self, graph, inputs: Tensor):

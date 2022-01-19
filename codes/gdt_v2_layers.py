@@ -11,7 +11,7 @@ from codes.gnn_utils import PositionWiseFeedForward, small_init_gain, small_init
 from torch import Tensor
 
 
-class GDTLayer(nn.Module):
+class GDTLayerV2(nn.Module):
     def __init__(self,
                  in_ent_feats: int,
                  out_ent_feats: int,
@@ -27,7 +27,7 @@ class GDTLayer(nn.Module):
                  rescale_res: bool = False,
                  concat: bool = False,
                  ppr_diff: bool = True):
-        super(GDTLayer, self).__init__()
+        super(GDTLayerV2, self).__init__()
 
         self.layer_idx = layer_idx
         self.layer_num = layer_num
@@ -175,7 +175,7 @@ class GDTLayer(nn.Module):
             return feat
 
 
-class RGDTLayer(nn.Module):
+class RGDTLayerV2(nn.Module):
     """
     Heterogeneous graph neural network (first layer) with different edge type
     """
@@ -195,7 +195,7 @@ class RGDTLayer(nn.Module):
                  rescale_res: bool = False,
                  concat: bool = False,
                  ppr_diff=True):
-        super(RGDTLayer, self).__init__()
+        super(RGDTLayerV2, self).__init__()
 
         self.layer_idx = layer_idx
         self.layer_num = layer_num
