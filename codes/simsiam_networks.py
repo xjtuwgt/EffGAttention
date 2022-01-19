@@ -1,4 +1,5 @@
 import torch.nn as nn
+from codes.gdt_encoder import GDTEncoder, RGDTEncoder
 
 class Projector(nn.Module):
     def __init__(self, model_dim: int, hidden_dim: int):
@@ -54,3 +55,14 @@ class SimSiam(nn.Module):
     def encode(self, x, cls_or_anchor='cls'):
         z = self.graph_encoder(x, cls_or_anchor)
         return z
+
+
+def SimSiam_Builder(config):
+    if config.relation_encoder:
+        graph_encoder = RGDTEncoder(config=config)
+        out_dim = 4 * config.hidden_dim if config.concat else config.hidden_dim
+    else:
+        graph_encoder = GDTEncoder(config=config)
+        out_dim = config.hidden_dim
+    simsiam_model = SimSiam(backbone=graph_encoder, backbone_out_dim=out_dim)
+    return simsiam_model
