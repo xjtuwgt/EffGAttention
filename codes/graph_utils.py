@@ -58,9 +58,9 @@ def k_hop_graph_edge_collection(graph: DGLHeteroGraph, hop_num: int = 5):
     k_hop_graph_edge_dict = {}
     copy_graph = copy.deepcopy(graph)
     copy_graph = dgl.remove_self_loop(g=copy_graph)
-    one_hop_head_nodes,  one_hop_tail_nodes = copy_graph.edges()
+    one_hop_head_nodes, one_hop_tail_nodes = copy_graph.edges()
     k_hop_graph_edge_dict['1_hop'] = (one_hop_head_nodes, one_hop_tail_nodes)
-    for k in range(2, hop_num+1):
+    for k in range(2, hop_num + 1):
         k_hop_graph = dgl.khop_graph(copy_graph, k=k)
         if k_hop_graph.number_of_edges() > 0:
             head_nodes, tail_nodes = k_hop_graph.edges()
@@ -68,6 +68,7 @@ def k_hop_graph_edge_collection(graph: DGLHeteroGraph, hop_num: int = 5):
         else:
             break
     return k_hop_graph_edge_dict
+
 
 """
 Node anchor based sub-graph sample
@@ -186,9 +187,10 @@ def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids
                                     special_relation2id: dict, edge_dir: str = 'in', self_loop: bool = False,
                                     cls: bool = True, bi_directed: bool = False, debug=False):
     neighbors_dict, node_arw_label_dict, edge_dict = sub_graph_neighbor_sample(graph=graph,
-                                                          anchor_node_ids=anchor_node_ids,
-                                                          cls_node_ids=cls_node_ids,
-                                                          fanouts=fanouts, edge_dir=edge_dir, debug=debug)
+                                                                               anchor_node_ids=anchor_node_ids,
+                                                                               cls_node_ids=cls_node_ids,
+                                                                               fanouts=fanouts, edge_dir=edge_dir,
+                                                                               debug=debug)
     subgraph = sub_graph_constructor(graph=graph, edge_dict=edge_dict, bi_directed=bi_directed,
                                      neighbors_dict=neighbors_dict)
     parent_node_ids, sub_node_ids = subgraph.ndata['nid'].tolist(), subgraph.nodes().tolist()

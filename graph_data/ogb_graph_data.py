@@ -2,6 +2,8 @@ from ogb.nodeproppred import DglNodePropPredDataset
 from evens import HOME_DATA_FOLDER as ogb_root
 import torch
 from codes.graph_utils import construct_special_graph_dictionary
+from codes.graph_utils import add_relation_ids_to_graph
+from codes.utils import IGNORE_IDX
 
 
 def ogb_nodeprop_graph_reconstruction(dataset: str):
@@ -25,11 +27,19 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     graph.ndata['label'] = labels
     # +++++++++++++++++++++++++++++++++
     n_classes = labels.max().data.item()
-    node_features = graph.ndata.pop('feat')
+    node_features = graph.ndata['feat']
     n_feats = node_features.shape[1]
     if dataset in {'ogbn-products'}:  # 'ogbn-proteins'
+        number_of_edges = graph.number_of_edges()
+        edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
+        graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
         nentities, nrelations = graph.number_of_nodes(), 1
     elif dataset in {'ogbn-arxiv', 'ogbn-papers100M'}:
+        number_of_edges = graph.number_of_edges()
+        edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
+        graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
+        src_nodes, dst_nodes = graph.edges()
+        graph.add_edges(dst_nodes, src_nodes, {'rid': edge_type_ids + 1})
         nentities, nrelations = graph.number_of_nodes(), 2
     else:
         raise 'Dataset {} is not supported'.format(dataset)
@@ -48,6 +58,15 @@ def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5):
     graph, number_of_relations, special_node_dict, \
     special_relation_dict = construct_special_graph_dictionary(graph=graph, n_relations=n_relations, hop_num=hop_num)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    graph.ndata['label'][-2:] = -IGNORE_IDX
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    number_of_added_nodes = graph.number_of_nodes() - n_entities
+    print('Added number of nodes = {}'.format(number_of_added_nodes))
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    if number_of_added_nodes > 0:
+        node_features = graph.ndata['feat']
+        added_node_features = torch.zeros((number_of_added_nodes, node_features.shape[1]), dtype=torch.float)
+        graph.ndata['feat'][-2:] = added_node_features
     number_of_nodes = graph.number_of_nodes()
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata.update({'nid': torch.arange(0, number_of_nodes, dtype=torch.long)})
