@@ -4,6 +4,7 @@ import torch
 from torch import nn
 from codes.gnn_utils import small_init_gain
 from dgl.sampling import sample_neighbors
+from dgl.sampling.randomwalks import random_walk
 from torch import Tensor
 from time import time
 import math
@@ -304,7 +305,7 @@ def anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dic
 
 def anchor_sub_graph_rwr_augmentation(subgraph, parent2sub_dict: dict, neighbors_dict: dict,
                                       special_relation_dict: dict, edge_dir: str, restart_prob: float = 0.8,
-                                      rw_hops: int = 64, bi_directed: bool = True):
+                                      max_nodes_per_seed: int = 64, bi_directed: bool = True):
     assert edge_dir in {'in', 'out'}
     if edge_dir == 'in':
         raw_sub_graph = dgl.reverse(subgraph, copy_ndata=True, copy_edata=True)
@@ -313,9 +314,11 @@ def anchor_sub_graph_rwr_augmentation(subgraph, parent2sub_dict: dict, neighbors
     anchor_parent_node_id = neighbors_dict['anchor'][0][0].data.item()
     anchor_idx = parent2sub_dict[anchor_parent_node_id]  # node idx in sub-graph
     assert anchor_idx < raw_sub_graph.number_of_nodes() - 1
-    max_nodes_for_seed = max(rw_hops,
+    max_nodes_for_seed = max(max_nodes_per_seed,
                              int((raw_sub_graph.out_degree(anchor_idx) * math.e / (math.e - 1) / restart_prob) + 0.5))
-    traces = dgl.contrib.sampling.random_walk_with_restart(g=raw_sub_graph,)
+    traces, types = random_walk(g=raw_sub_graph, nodes=[anchor_idx], length=max_nodes_for_seed * 3,
+                                restart_prob=restart_prob)
+
 
     return
 
