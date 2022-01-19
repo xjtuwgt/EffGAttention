@@ -181,16 +181,17 @@ class LBRLayer(nn.Module):
 
 
 class LinearClassifier(nn.Module):
-    def __init__(self, model_dim: int, num_of_classes: int):
+    def __init__(self, model_dim: int, num_of_classes: int, layer_num=1):
         super(LinearClassifier, self).__init__()
         self.model_dim = model_dim
         self.class_num = num_of_classes
         self.w1 = nn.Linear(in_features=self.model_dim, out_features=self.class_num)
+        self.layer_num = layer_num
         self.reset_parameters()
 
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.w1.weight, gain=gain)
+        nn.init.xavier_normal_(self.w1.weight, gain=gain) / math.sqrt(self.layer_num)
 
     def forward(self, x: Tensor):
         return self.w1(x)
