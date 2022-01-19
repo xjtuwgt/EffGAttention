@@ -6,6 +6,7 @@ from codes.gnn_utils import small_init_gain
 from dgl.sampling import sample_neighbors
 from torch import Tensor
 from time import time
+import math
 import copy
 from dgl import DGLHeteroGraph
 from numpy import random
@@ -149,6 +150,9 @@ def sub_graph_constructor(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict
     return subgraph
 
 
+# ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
 def single_node_sub_graph_extractor(graph, neighbors_dict: dict):
     """
     :param graph:
@@ -231,7 +235,7 @@ Graph augmentation method
 """
 
 
-def no_multihop_node_augmentation(subgraph, loop_r):
+def no_multi_hop_node_augmentation(subgraph, loop_r):
     aug_sub_graph = copy.deepcopy(subgraph)
     number_of_nodes = subgraph.number_of_nodes()
     node_ids = torch.arange(number_of_nodes - 1).to(subgraph.device)
@@ -259,7 +263,7 @@ def anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dic
     filtered_neighbors_dict = dict([(key, value) for key, value in neighbors_dict.items()
                                     if 'hop' in key and value[0].shape[0] > 0 and 'hop_1' not in key])  # for >=2 hops
     if len(filtered_neighbors_dict) == 0:  # for single node or sub-graph without 2-hop neighbors, just add self-loop
-        return no_multihop_node_augmentation(subgraph=subgraph, loop_r=special_relation_dict['loop_r'])
+        return no_multi_hop_node_augmentation(subgraph=subgraph, loop_r=special_relation_dict['loop_r'])
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     hop_neighbors_ = [key for key, value in filtered_neighbors_dict.items()]
     filtered_neighbor_hop_num = len(hop_neighbors_)
@@ -298,8 +302,35 @@ def anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dic
     return aug_sub_graph
 
 
+def anchor_sub_graph_rwr_augmentation(subgraph, parent2sub_dict: dict, neighbors_dict: dict,
+                                      special_relation_dict: dict, edge_dir: str, restart_prob: float = 0.8,
+                                      rw_hops: int = 64, bi_directed: bool = True):
+    assert edge_dir in {'in', 'out'}
+    if edge_dir == 'in':
+        raw_sub_graph = dgl.reverse(subgraph, copy_ndata=True, copy_edata=True)
+    else:
+        raw_sub_graph = subgraph
+    anchor_parent_node_id = neighbors_dict['anchor'][0][0].data.item()
+    anchor_idx = parent2sub_dict[anchor_parent_node_id]  # node idx in sub-graph
+    assert anchor_idx < raw_sub_graph.number_of_nodes() - 1
+    max_nodes_for_seed = max(rw_hops,
+                             int((raw_sub_graph.out_degree(anchor_idx) * math.e / (math.e - 1) / restart_prob) + 0.5))
+    traces = dgl.contrib.sampling.random_walk_with_restart(g=raw_sub_graph,)
+
+    return
+
+
 def graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, special_entity_dict: dict,
                                  special_relation_dict: dict):
+    """
+    sub-graph + adding multi-hop edges (without anchor node)
+    :param subgraph:
+    :param hop_num:
+    :param edge_dir:
+    :param special_entity_dict:
+    :param special_relation_dict:
+    :return:
+    """
     assert edge_dir in {'in', 'out'}
     view_num = random.randint(1, hop_num + 1)
     samp_hop_nums = random.choice(np.arange(2, hop_num + 1), size=view_num, replace=False)
@@ -307,11 +338,13 @@ def graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, special_
                      in special_relation_dict]
     assert len(hop_relations) > 0
     aug_sub_graph = copy.deepcopy(subgraph)
-    for hop_num, hop_relation in hop_relations:
+    for idx, (hop_num, hop_relation) in enumerate(hop_relations):
         hop_graph = dgl.khop_graph(g=subgraph, k=hop_num)
         src_nodes, dst_nodes = hop_graph.edges()
-        relation_tid_i = torch.LongTensor(src_nodes.shape).fill_(special_relation_dict[hop_relation]).to(subgraph.device)
+        relation_tid_i = torch.LongTensor(src_nodes.shape).fill_(special_relation_dict[hop_relation]).to(
+            subgraph.device)
         aug_sub_graph.add_edges(src_nodes, dst_nodes, {'rid': relation_tid_i})
+
     cls_parent_node_id = special_entity_dict['cls'][0][0].data.item()
     aug_sub_graph, _ = cls_node_addition(subgraph=aug_sub_graph, cls_parent_node_id=cls_parent_node_id,
                                          special_relation_dict=special_relation_dict)
