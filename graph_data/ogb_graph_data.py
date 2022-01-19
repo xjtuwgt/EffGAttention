@@ -1,6 +1,8 @@
 from ogb.nodeproppred import DglNodePropPredDataset
 from evens import HOME_DATA_FOLDER as ogb_root
 import torch
+from torch import nn
+from codes.gnn_utils import small_init_gain
 from codes.graph_utils import construct_special_graph_dictionary
 from codes.graph_utils import add_relation_ids_to_graph
 from codes.utils import IGNORE_IDX
@@ -52,7 +54,7 @@ def ogb_train_valid_test(node_split_idx: dict, data_type: str):
     return data_len, data_node_ids
 
 
-def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5):
+def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5, OON='rand'):
     graph, node_split_idx, node_features, n_entities, n_relations, n_classes, n_feats = \
         ogb_nodeprop_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
@@ -66,6 +68,9 @@ def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5):
     if number_of_added_nodes > 0:
         node_features = graph.ndata['feat']
         added_node_features = torch.zeros((number_of_added_nodes, node_features.shape[1]), dtype=torch.float)
+        if OON != 'zero':
+            initial_weight = small_init_gain(d_in=node_features.shape[1], d_out=node_features.shape[1])
+            added_node_features = nn.init.xavier_normal_(added_node_features.data.unsqueeze(0), gain=initial_weight)
         graph.ndata['feat'][-2:] = added_node_features
     number_of_nodes = graph.number_of_nodes()
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
