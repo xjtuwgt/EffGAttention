@@ -5,6 +5,7 @@ from dgl import DGLHeteroGraph
 import dgl
 from codes.graph_utils import construct_special_graph_dictionary, add_relation_ids_to_graph, add_self_loop_in_graph
 import numpy as np
+from codes.utils import IGNORE_IDX
 
 
 def citation_graph_reconstruction(dataset: str):
@@ -91,6 +92,19 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
             citation_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
     special_relation_dict = construct_special_graph_dictionary(graph=graph, n_relations=n_relations, hop_num=hop_num)
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    graph.ndata['label'][-2:] = -IGNORE_IDX
+    graph.ndata['val_mask'][-2:] = False
+    graph.ndata['train_mask'][-2:] = False
+    graph.ndata['test_mask'][-2:] = False
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    number_of_added_nodes = graph.number_of_nodes() - n_entities
+    print('Added number of nodes = {}'.format(number_of_added_nodes))
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    if number_of_added_nodes > 0:
+        node_features = graph.ndata['feat']
+        added_node_features = torch.zeros((number_of_added_nodes, node_features.shape[1]), dtype=torch.float)
+        graph.ndata['feat'][-2:] = added_node_features
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     number_of_nodes = graph.number_of_nodes()
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

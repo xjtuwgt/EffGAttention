@@ -17,6 +17,7 @@ def construct_special_graph_dictionary(graph, hop_num: int, n_relations: int):
     """
     special_relation_dict = {'loop_r': n_relations - 1}
     special_node_dict = {'cls': graph.number_of_nodes()}
+    graph.add_nodes(1)  # add 'cls' node
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     for hop in range(1, hop_num):
         special_relation_dict['in_hop_{}_r'.format(hop + 1)] = n_relations + (2 * (hop - 1))

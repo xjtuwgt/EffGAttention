@@ -55,7 +55,7 @@ class GDTEncoder(nn.Module):
     def forward(self, batch_g_pair, cls_or_anchor: str = 'cls'):
         batch_g = batch_g_pair[0]
         ent_ids = batch_g.ndata['nid']
-        ent_features = self.node_embed_layer(ent_ids)
+        ent_features = self.ent_ember(ent_ids)
         if self.config.arw_position:
             arw_positions = batch_g.ndata['n_rw_label']
             arw_pos_embed = self.position_embed_layer(arw_positions)

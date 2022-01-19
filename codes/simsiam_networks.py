@@ -61,7 +61,7 @@ class SimSiam(nn.Module):
             return z
 
 
-def SimSiam_Builder(config):
+def SimSiam_Model_Builder(config):
     if config.relation_encoder:
         graph_encoder = RGDTEncoder(config=config)
         out_dim = 4 * config.hidden_dim if config.concat else config.hidden_dim

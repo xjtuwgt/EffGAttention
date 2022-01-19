@@ -98,6 +98,8 @@ class node_classification_data_helper(object):
             special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
                                                                                    hop_num=self.config.sub_graph_hop_num)
             self.node_split_idx = node_split_idx
+        graph = dgl.remove_self_loop(g=graph)
+
         self.graph = graph
         self.number_of_nodes = number_of_nodes
         self.number_of_relations = number_of_relations
