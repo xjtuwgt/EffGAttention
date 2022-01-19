@@ -191,7 +191,7 @@ class LinearClassifier(nn.Module):
 
     def reset_parameters(self):
         gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.w1.weight, gain=gain)
+        nn.init.xavier_normal_(self.w1.weight, gain=gain) / math.sqrt(self.layer_num)
 
     def forward(self, x: Tensor):
         return self.w1(x)

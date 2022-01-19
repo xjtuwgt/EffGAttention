@@ -125,7 +125,9 @@ class GraphNodeClassification(nn.Module):
         else:
             self.graph_encoder = GDTEncoderV2(config=self.config)
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
-        self.classifier = LinearClassifier(model_dim=hidden_dim, num_of_classes=self.config.num_classes)
+        self.classifier = LinearClassifier(model_dim=hidden_dim,
+                                           num_of_classes=self.config.num_classes,
+                                           layer_num=self.config.layers)
 
     def forward(self, graph, inputs: Tensor):
         h = self.graph_encoder(graph, inputs)

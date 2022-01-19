@@ -153,9 +153,9 @@ def main(args):
         # create model
         seed_everything(seed=args.seed)
         if args.encoder_v2:
-            model = NodeClassifier(config=args)
-        else:
             model = NodeClassifierV2(config=args)
+        else:
+            model = NodeClassifier(config=args)
         model.to(args.device)
         if args.relation_encoder:
             model.init_graph_ember(ent_emb=features, ent_freeze=True)
