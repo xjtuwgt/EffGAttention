@@ -1,7 +1,7 @@
 from codes.gdt_layers import GDTLayer, RGDTLayer
 from torch import nn
 from torch import Tensor
-from codes.gnn_utils import EmbeddingLayer, LinearClassifier
+from codes.gnn_utils import EmbeddingLayer
 import torch
 
 
@@ -9,6 +9,16 @@ class GDTEncoder(nn.Module):
     def __init__(self, config):
         super(GDTEncoder, self).__init__()
         self.config = config
+        self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
+        if self.config.arw_position:
+            position_num = self.config.sub_graph_hop_num + 2
+            if self.config.node_emb_dim == self.config.arw_pos_emb_dim:
+                self.position_embed_layer = EmbeddingLayer(num=position_num,
+                                                           dim=self.config.arw_pos_emb_dim)
+            else:
+                self.position_embed_layer = EmbeddingLayer(num=position_num,
+                                                           dim=self.config.arw_pos_emb_dim,
+                                                           project_dim=self.config.node_emb_dim)
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
                                                   out_ent_feats=self.config.hidden_dim,
@@ -38,11 +48,30 @@ class GDTEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
-    def forward(self, graph, inputs: Tensor):
-        h = inputs
-        for _ in range(self.config.layers):
-            h = self.graph_encoder[_](graph, h)
-        return h
+    def init_graph_ember(self, ent_emb: Tensor = None, ent_freeze=False):
+        if ent_emb is not None:
+            self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
+
+    def forward(self, batch_g_pair, cls_or_anchor: str = 'cls'):
+        batch_g = batch_g_pair[0]
+        ent_ids = batch_g.ndata['nid']
+        ent_features = self.node_embed_layer(ent_ids)
+        if self.config.arw_position:
+            arw_positions = batch_g.ndata['n_rw_label']
+            arw_pos_embed = self.position_embed_layer(arw_positions)
+            ent_features = ent_features + arw_pos_embed
+        with batch_g.local_scope():
+            h = ent_features
+            for _ in range(self.config.layers):
+                h = self.graph_encoder[_](batch_g, h)
+            if cls_or_anchor == 'cls':
+                batch_node_ids = batch_g_pair[1]
+            elif cls_or_anchor == 'anchor':
+                batch_node_ids = batch_g_pair[2]
+            else:
+                raise '{} is not supported'.format(cls_or_anchor)
+            batch_graph_embed = h[batch_node_ids]
+            return batch_graph_embed
 
 
 class RGDTEncoder(nn.Module):
@@ -61,6 +90,16 @@ class RGDTEncoder(nn.Module):
                 self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.rel_emb_dim,
                                                 project_dim=self.config.proj_emb_dim)
                 rel_in_dim = self.config.rel_emb_dim
+
+        if self.config.arw_position:
+            position_num = self.config.sub_graph_hop_num + 2
+            if self.config.node_emb_dim == self.config.arw_pos_emb_dim:
+                self.position_embed_layer = EmbeddingLayer(num=position_num,
+                                                           dim=self.config.arw_pos_emb_dim)
+            else:
+                self.position_embed_layer = EmbeddingLayer(num=position_num,
+                                                           dim=self.config.arw_pos_emb_dim,
+                                                           project_dim=self.config.node_emb_dim)
 
         ent_in_dim = self.config.node_emb_dim
         self.graph_encoder = nn.ModuleList()
@@ -84,7 +123,7 @@ class RGDTEncoder(nn.Module):
                                                       num_heads=self.config.head_num,
                                                       hop_num=self.config.gnn_hop_num,
                                                       alpha=self.config.alpha,
-                                                      layer_idx=_+1,
+                                                      layer_idx=_ + 1,
                                                       layer_num=self.config.layers,
                                                       feat_drop=self.config.feat_drop,
                                                       attn_drop=self.config.attn_drop,
@@ -100,30 +139,28 @@ class RGDTEncoder(nn.Module):
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
 
-    def forward(self, graph):
-        assert graph.number_of_nodes() <= self.ent_ember.num
-        e_h = self.ent_ember(torch.arange(graph.number_of_nodes()).to(self.dummy_param.device))
-        r_h = self.rel_ember(torch.arange(self.config.num_relations).to(self.dummy_param.device))
-        h = self.graph_encoder[0](graph, e_h, r_h)
-        for _ in range(1, self.config.layers):
-            h = self.graph_encoder[_](graph, h)
-        return h
-
-
-class GraphNodeClassification(nn.Module):
-    def __init__(self, config):
-        super(GraphNodeClassification, self).__init__()
-        self.config = config
-        if self.config.relation_encoder:
-            self.graph_encoder = RGDTEncoder(config=self.config)
-        else:
-            self.graph_encoder = GDTEncoder(config=self.config)
-        self.classifier = LinearClassifier(model_dim=self.config.hidden_dim,
-                                           num_of_classes=self.config.num_classes,
-                                           layer_num=self.config.layers)
-
-    def forward(self, graph, inputs: Tensor):
-        h = self.graph_encoder(graph, inputs)
-        logits = self.classifier(h)
-        return logits
-
+    def forward(self, batch_g_pair, cls_or_anchor: str = 'cls'):
+        batch_g = batch_g_pair[0]
+        ent_ids = batch_g.ndata['nid']
+        rel_ids = batch_g.edata['rid']
+        ent_features = self.ent_ember(ent_ids)
+        rel_features = self.rel_ember(rel_ids)
+        if self.config.arw_position:
+            arw_positions = batch_g.ndata['n_rw_label']
+            arw_pos_embed = self.position_embed_layer(arw_positions)
+            ent_features = ent_features + arw_pos_embed
+        with batch_g.local_scope():
+            h = ent_features
+            for _ in range(self.config.layers):
+                if _ == 0:
+                    h = self.graph_encoder[_](batch_g, h, rel_features)
+                else:
+                    h = self.graph_encoder[_](batch_g, h)
+            if cls_or_anchor == 'cls':
+                batch_node_ids = batch_g_pair[1]
+            elif cls_or_anchor == 'anchor':
+                batch_node_ids = batch_g_pair[2]
+            else:
+                raise '{} is not supported'.format(cls_or_anchor)
+            batch_graph_embed = h[batch_node_ids]
+            return batch_graph_embed
