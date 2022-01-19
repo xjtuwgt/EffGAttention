@@ -157,3 +157,9 @@
 # #
 # # """
 # #     MLP Layer used after graph vector representation
+
+from codes.default_argparser import default_parser
+from graph_data.graph_dataloader import node_classification_data_helper
+
+args = default_parser().parse_args()
+node_classification_data_helper(config=args)
