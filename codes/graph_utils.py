@@ -231,9 +231,19 @@ Graph augmentation method
 """
 
 
-def cls_anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dict: dict,
-                                      special_relation_dict: dict, edge_dir: str,
-                                      bi_directed: bool = True):
+def no_multihop_node_augmentation(subgraph, loop_r):
+    aug_sub_graph = copy.deepcopy(subgraph)
+    number_of_nodes = subgraph.number_of_nodes()
+    node_ids = torch.arange(number_of_nodes - 1).to(subgraph.device)
+    self_loop_r = torch.full((number_of_nodes - 1,), loop_r, dtype=torch.long, device=subgraph.device)
+    aug_sub_graph.add_edges(node_ids, node_ids, {'rid': self_loop_r})
+    assert subgraph.number_of_nodes() == aug_sub_graph.number_of_nodes()
+    return aug_sub_graph
+
+
+def anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dict: dict,
+                                  special_relation_dict: dict, edge_dir: str,
+                                  bi_directed: bool = True):
     """
     :param subgraph: sub-graph with anchor-node
     :param parent2sub_dict: map parent ids to the sub-graph node ids
@@ -244,32 +254,27 @@ def cls_anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors
     :return: graph augmentation by randomly adding "multi-hop edges" in graphs
     """
     anchor_parent_node_id = neighbors_dict['anchor'][0][0].data.item()
-    anchor_idx = parent2sub_dict[anchor_parent_node_id]
+    anchor_idx = parent2sub_dict[anchor_parent_node_id]  # node idx in sub-graph
     assert anchor_idx < subgraph.number_of_nodes() - 1
     filtered_neighbors_dict = dict([(key, value) for key, value in neighbors_dict.items()
-                                    if 'hop' in key and value[0].shape[0] > 0 and 'hop_1' not in key])
-    if len(filtered_neighbors_dict) == 0:
-        aug_sub_graph = copy.deepcopy(subgraph)
-        number_of_nodes = subgraph.number_of_nodes()
-        node_ids = torch.arange(number_of_nodes - 1)
-        self_loop_r = torch.full((number_of_nodes - 1,), special_relation_dict['loop_r'], dtype=torch.long)
-        aug_sub_graph.add_edges(node_ids, node_ids, {'rid': self_loop_r})
-        assert subgraph.number_of_nodes() == aug_sub_graph.number_of_nodes()
-        return aug_sub_graph
+                                    if 'hop' in key and value[0].shape[0] > 0 and 'hop_1' not in key])  # for >=2 hops
+    if len(filtered_neighbors_dict) == 0:  # for single node or sub-graph without 2-hop neighbors, just add self-loop
+        return no_multihop_node_augmentation(subgraph=subgraph, loop_r=special_relation_dict['loop_r'])
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     hop_neighbors_ = [key for key, value in filtered_neighbors_dict.items()]
     filtered_neighbor_hop_num = len(hop_neighbors_)
     view_num = random.randint(1, filtered_neighbor_hop_num + 1)
-    hop_neighbor_names = random.choice(hop_neighbors_, view_num, replace=False)
+    hop_neighbor_names = random.choice(hop_neighbors_, view_num, replace=False)  # randomly adding some-hops
     # #+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    aug_sub_graph = copy.deepcopy(subgraph)
+    aug_sub_graph = copy.deepcopy(subgraph)  # adding edges based on original graph
     for hop_neighbor in hop_neighbor_names:
         assert edge_dir in hop_neighbor
         relation_idx = special_relation_dict['{}_r'.format(hop_neighbor)]
         hop_neighbor_ids, hop_neighbor_freq = filtered_neighbors_dict[hop_neighbor]
-        hop_neighbor_ids = torch.as_tensor([parent2sub_dict[_] for _ in hop_neighbor_ids.tolist()], dtype=torch.long)
-        anchor_array = torch.full(hop_neighbor_ids.shape, anchor_idx, dtype=torch.long)
-        relation_array = torch.full(hop_neighbor_ids.shape, relation_idx, dtype=torch.long)
+        hop_neighbor_ids = torch.as_tensor([parent2sub_dict[_] for _ in hop_neighbor_ids.tolist()],
+                                           dtype=torch.long, device=subgraph.device)
+        anchor_array = torch.full(hop_neighbor_ids.shape, anchor_idx, dtype=torch.long, device=subgraph.device)
+        relation_array = torch.full(hop_neighbor_ids.shape, relation_idx, dtype=torch.long, device=subgraph.device)
         if edge_dir == 'in':
             src_nodes = hop_neighbor_ids
             dst_nodes = anchor_array
@@ -283,7 +288,8 @@ def cls_anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors
             else:
                 rev_relation = '{}_r'.format(hop_neighbor.replace('out', 'in'))
             rev_relation_idx = special_relation_dict[rev_relation]
-            rev_relation_array = torch.full(hop_neighbor_ids.shape, rev_relation_idx, dtype=torch.long)
+            rev_relation_array = torch.full(hop_neighbor_ids.shape, rev_relation_idx,
+                                            dtype=torch.long, device=subgraph.device)
             aug_sub_graph.add_edges(torch.cat([src_nodes, dst_nodes]),
                                     torch.cat([dst_nodes, src_nodes]),
                                     {'rid': torch.cat([relation_array, rev_relation_array])})
@@ -292,8 +298,8 @@ def cls_anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors
     return aug_sub_graph
 
 
-def sub_graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, special_entity_dict: dict,
-                                     special_relation_dict: dict):
+def graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, special_entity_dict: dict,
+                                 special_relation_dict: dict):
     assert edge_dir in {'in', 'out'}
     view_num = random.randint(1, hop_num + 1)
     samp_hop_nums = random.choice(np.arange(2, hop_num + 1), size=view_num, replace=False)
@@ -304,7 +310,7 @@ def sub_graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, spec
     for hop_num, hop_relation in hop_relations:
         hop_graph = dgl.khop_graph(g=subgraph, k=hop_num)
         src_nodes, dst_nodes = hop_graph.edges()
-        relation_tid_i = torch.LongTensor(src_nodes.shape).fill_(special_relation_dict[hop_relation])
+        relation_tid_i = torch.LongTensor(src_nodes.shape).fill_(special_relation_dict[hop_relation]).to(subgraph.device)
         aug_sub_graph.add_edges(src_nodes, dst_nodes, {'rid': relation_tid_i})
     cls_parent_node_id = special_entity_dict['cls'][0][0].data.item()
     aug_sub_graph, _ = cls_node_addition(subgraph=aug_sub_graph, cls_parent_node_id=cls_parent_node_id,
@@ -312,9 +318,10 @@ def sub_graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, spec
     return aug_sub_graph
 
 
-def anchor_sub_graph_augmentation(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
-                                  special_relation2id: dict, edge_dir: str = 'in', self_loop: bool = False,
-                                  bi_directed: bool = False, debug=False):
+def sub_graph_augmentation(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
+                           special_relation2id: dict, edge_dir: str = 'in', self_loop: bool = False,
+                           bi_directed: bool = False, aug_type: str = 'anchor', debug=False):
+    assert aug_type in {'anchor', 'multi_view'}
     subgraph, parent2sub_dict, neighbors_dict = anchor_node_sub_graph_extractor(graph=graph,
                                                                                 anchor_node_ids=anchor_node_ids,
                                                                                 cls_node_ids=cls_node_ids,

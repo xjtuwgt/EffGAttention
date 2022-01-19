@@ -10,7 +10,7 @@ class GDTEncoder(nn.Module):
         super(GDTEncoder, self).__init__()
         self.config = config
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
-        if self.config.arw_position:
+        if self.config.relative_position:
             position_num = self.config.sub_graph_hop_num + 2
             if self.config.node_emb_dim == self.config.arw_pos_emb_dim:
                 self.position_embed_layer = EmbeddingLayer(num=position_num,
@@ -56,7 +56,7 @@ class GDTEncoder(nn.Module):
         batch_g = batch_g_pair[0]
         ent_ids = batch_g.ndata['nid']
         ent_features = self.ent_ember(ent_ids)
-        if self.config.arw_position:
+        if self.config.relative_position:
             arw_positions = batch_g.ndata['n_rw_label']
             arw_pos_embed = self.position_embed_layer(arw_positions)
             ent_features = ent_features + arw_pos_embed
@@ -91,7 +91,7 @@ class RGDTEncoder(nn.Module):
                                                 project_dim=self.config.proj_emb_dim)
                 rel_in_dim = self.config.rel_emb_dim
 
-        if self.config.arw_position:
+        if self.config.relative_position:
             position_num = self.config.sub_graph_hop_num + 2
             if self.config.node_emb_dim == self.config.arw_pos_emb_dim:
                 self.position_embed_layer = EmbeddingLayer(num=position_num,
@@ -145,7 +145,7 @@ class RGDTEncoder(nn.Module):
         rel_ids = batch_g.edata['rid']
         ent_features = self.ent_ember(ent_ids)
         rel_features = self.rel_ember(rel_ids)
-        if self.config.arw_position:
+        if self.config.relative_position:
             arw_positions = batch_g.ndata['n_rw_label']
             arw_pos_embed = self.position_embed_layer(arw_positions)
             ent_features = ent_features + arw_pos_embed

@@ -85,14 +85,14 @@ def default_parser():
     parser.add_argument('--ogb_node_name', type=str, default='ogbn-arxiv')
     parser.add_argument('--graph_type', type=str, default='citation', choices=["citation", "ogb"])
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
-    parser.add_argument('--relation_encoder', type=boolean_string, default='false')
+    parser.add_argument('--relation_encoder', type=boolean_string, default='true')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--sub_graph_fanouts', type=str, default='10,5')
     parser.add_argument('--sub_graph_hop_num', type=int, default=6)
     parser.add_argument('--sub_graph_edge_dir', type=str, default='in', choices=['in', 'out'])
     parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
     parser.add_argument('--graph_augmentation', type=boolean_string, default='false')
-    parser.add_argument('--arw_position', type=boolean_string, default='false')
+    parser.add_argument('--relative_position', type=boolean_string, default='false')
     parser.add_argument('--cls_or_anchor', type=str, default='cls', choices=["cls", "anchor"])
     parser.add_argument('--siam_project', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
