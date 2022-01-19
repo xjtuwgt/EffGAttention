@@ -55,7 +55,7 @@ class NodeClassificationSubGraphDataset(Dataset):
                                                                     cls_node_ids=cls_node_ids,
                                                                     fanouts=samp_fanouts,
                                                                     edge_dir=self.edge_dir,
-                                                                    special_relation2id=self.special_entity2id,
+                                                                    special_relation2id=self.special_relation2id,
                                                                     self_loop=self.self_loop,
                                                                     bi_directed=self.bi_directed,
                                                                     cls=self.cls)
@@ -109,6 +109,7 @@ class node_classification_data_helper(object):
         self.fanouts = [int(_) for _ in self.config.sub_graph_fanouts.split(',')]
 
     def data_loader(self, data_type):
+        assert data_type in {'train', 'valid', 'test'}
         dataset = NodeClassificationSubGraphDataset(graph=self.graph, nentity=self.number_of_nodes,
                                                     nrelation=self.number_of_relations,
                                                     special_entity2id=self.special_entity_dict,

@@ -162,4 +162,16 @@ from codes.default_argparser import default_parser
 from graph_data.graph_dataloader import node_classification_data_helper
 
 args = default_parser().parse_args()
-node_classification_data_helper(config=args)
+datahelper = node_classification_data_helper(config=args)
+
+train_data = datahelper.data_loader(data_type='train')
+
+for batch_idx, batch in enumerate(train_data):
+    print(batch_idx)
+    batch_graph = batch['batch_graph']
+    print(batch_graph[0].ndata['nid'])
+    cls_idx = batch_graph[1]
+    print(batch_graph[0].ndata['nid'][cls_idx])
+    print(batch_graph[2])
+
+
