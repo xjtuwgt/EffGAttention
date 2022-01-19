@@ -19,14 +19,13 @@ class NodeClassificationSubGraphDataset(Dataset):
     def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
                  special_entity2id: dict, special_relation2id: dict, data_type: str, graph_type: str,
                  bi_directed: bool = True, self_loop: bool = False, edge_dir: str = 'in',
-                 node_split_idx: dict = None, cls: bool = True, graph_aug: bool=False):
+                 node_split_idx: dict = None, cls: bool = True):
         assert len(fanouts) > 0 and (data_type in {'train', 'valid', 'test'})
         assert graph_type in {'citation', 'ogb'}
         self.fanouts = fanouts  # list of int == number of hops for sampling
         self.hop_num = len(fanouts)
         self.g = graph
         self.cls = cls
-        self.graph_augmentation = graph_aug
         #####################
         if graph_type == 'ogb':
             assert node_split_idx is not None
@@ -52,7 +51,7 @@ class NodeClassificationSubGraphDataset(Dataset):
         samp_hop_num = random.randint(2, self.hop_num + 1)
         samp_fanouts = self.fanouts[:samp_hop_num]
         cls_node_ids = torch.LongTensor([self.special_entity2id['cls']])
-        subgraph, parent2sub_dict, neighbors_dict = \
+        subgraph, parent2sub_dict, _ = \
             anchor_node_sub_graph_extractor(graph=self.g,
                                             anchor_node_ids=anchor_node_ids,
                                             cls_node_ids=cls_node_ids,

@@ -310,3 +310,20 @@ def sub_graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, spec
     aug_sub_graph, _ = cls_node_addition(subgraph=aug_sub_graph, cls_parent_node_id=cls_parent_node_id,
                                          special_relation_dict=special_relation_dict)
     return aug_sub_graph
+
+
+def anchor_sub_graph_augmentation(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
+                                  special_relation2id: dict, edge_dir: str = 'in', self_loop: bool = False,
+                                  bi_directed: bool = False, debug=False):
+    subgraph, parent2sub_dict, neighbors_dict = anchor_node_sub_graph_extractor(graph=graph,
+                                                                                anchor_node_ids=anchor_node_ids,
+                                                                                cls_node_ids=cls_node_ids,
+                                                                                fanouts=fanouts,
+                                                                                special_relation2id=special_relation2id,
+                                                                                edge_dir=edge_dir,
+                                                                                self_loop=self_loop,
+                                                                                cls=False,
+                                                                                bi_directed=bi_directed,
+                                                                                debug=debug)
+
+    return
