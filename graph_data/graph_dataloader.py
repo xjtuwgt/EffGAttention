@@ -15,16 +15,18 @@ class NodeClassificationSubGraphDataset(Dataset):
     """
     Graph representation learning with node labels
     """
+
     def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
                  special_entity2id: dict, special_relation2id: dict, data_type: str, graph_type: str,
                  bi_directed: bool = True, self_loop: bool = False, edge_dir: str = 'in',
-                 node_split_idx: dict = None, cls: bool = True):
+                 node_split_idx: dict = None, cls: bool = True, graph_aug: bool=False):
         assert len(fanouts) > 0 and (data_type in {'train', 'valid', 'test'})
         assert graph_type in {'citation', 'ogb'}
         self.fanouts = fanouts  # list of int == number of hops for sampling
         self.hop_num = len(fanouts)
         self.g = graph
         self.cls = cls
+        self.graph_augmentation = graph_aug
         #####################
         if graph_type == 'ogb':
             assert node_split_idx is not None
@@ -50,15 +52,16 @@ class NodeClassificationSubGraphDataset(Dataset):
         samp_hop_num = random.randint(2, self.hop_num + 1)
         samp_fanouts = self.fanouts[:samp_hop_num]
         cls_node_ids = torch.LongTensor([self.special_entity2id['cls']])
-        subgraph, parent2sub_dict = anchor_node_sub_graph_extractor(graph=self.g,
-                                                                    anchor_node_ids=anchor_node_ids,
-                                                                    cls_node_ids=cls_node_ids,
-                                                                    fanouts=samp_fanouts,
-                                                                    edge_dir=self.edge_dir,
-                                                                    special_relation2id=self.special_relation2id,
-                                                                    self_loop=self.self_loop,
-                                                                    bi_directed=self.bi_directed,
-                                                                    cls=self.cls)
+        subgraph, parent2sub_dict, neighbors_dict = \
+            anchor_node_sub_graph_extractor(graph=self.g,
+                                            anchor_node_ids=anchor_node_ids,
+                                            cls_node_ids=cls_node_ids,
+                                            fanouts=samp_fanouts,
+                                            edge_dir=self.edge_dir,
+                                            special_relation2id=self.special_relation2id,
+                                            self_loop=self.self_loop,
+                                            bi_directed=self.bi_directed,
+                                            cls=self.cls)
         sub_anchor_id = parent2sub_dict[node_idx.data.item()]
         class_label = self.g.ndata['label'][node_idx]
         return subgraph, class_label, sub_anchor_id
@@ -87,8 +90,8 @@ class node_classification_data_helper(object):
         self.graph_type = self.config.graph_type
         if self.graph_type == 'citation':
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
-            citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
-                                                hop_num=self.config.sub_graph_hop_num, rand_split=False)
+                citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
+                                                    hop_num=self.config.sub_graph_hop_num, rand_split=False)
             self.node_split_idx = None
         else:
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
@@ -107,6 +110,7 @@ class node_classification_data_helper(object):
         self.edge_dir = self.config.sub_graph_edge_dir
         self.self_loop = self.config.sub_graph_self_loop
         self.fanouts = [int(_) for _ in self.config.sub_graph_fanouts.split(',')]
+        self.graph_augmentation = self.config.graph_augmentation
 
     def data_loader(self, data_type):
         assert data_type in {'train', 'valid', 'test'}
@@ -116,7 +120,8 @@ class node_classification_data_helper(object):
                                                     special_relation2id=self.special_relation_dict,
                                                     data_type=data_type, graph_type=self.graph_type,
                                                     edge_dir=self.edge_dir, self_loop=self.self_loop,
-                                                    fanouts=self.fanouts, node_split_idx=self.node_split_idx)
+                                                    fanouts=self.fanouts, graph_aug=self.graph_augmentation,
+                                                    node_split_idx=self.node_split_idx)
         if data_type in {'train'}:
             batch_size = self.train_batch_size
             shuffle = True

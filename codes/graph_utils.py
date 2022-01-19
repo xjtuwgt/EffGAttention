@@ -203,4 +203,4 @@ def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids
     for key, value in parent2sub_dict.items():
         node_orders[value] = node_arw_label_dict[key]
     subgraph.ndata['n_rw_pos'] = node_orders
-    return subgraph, parent2sub_dict
+    return subgraph, parent2sub_dict, neighbors_dict
