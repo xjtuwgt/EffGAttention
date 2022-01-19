@@ -180,6 +180,21 @@ class LBRLayer(nn.Module):
         return self.dropout(F.relu(self.batch_norm(self.w_1(x))))
 
 
+class LinearClassifier(nn.Module):
+    def __init__(self, model_dim: int, num_of_classes: int):
+        super(LinearClassifier, self).__init__()
+        self.model_dim = model_dim
+        self.class_num = num_of_classes
+        self.w1 = nn.Linear(in_features=self.model_dim, out_features=self.class_num)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        gain = nn.init.calculate_gain('relu')
+        nn.init.xavier_normal_(self.w1.weight, gain=gain)
+
+    def forward(self, x: Tensor):
+        return self.w1(x)
+
 class MLPReadout(nn.Module):
     def __init__(self, input_dim, output_dim, L=2, dropout: float = 0.1):  # L=nb_hidden_layers
         super().__init__()

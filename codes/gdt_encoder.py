@@ -1,7 +1,7 @@
 from codes.gdt_layers import GDTLayer, RGDTLayer
 from torch import nn
 from torch import Tensor
-from codes.gnn_utils import EmbeddingLayer
+from codes.gnn_utils import EmbeddingLayer, LinearClassifier
 import torch
 
 
@@ -37,19 +37,12 @@ class GDTEncoder(nn.Module):
                                                       rescale_res=self.config.rescale_res,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def forward(self, graph, inputs: Tensor):
         h = inputs
         for _ in range(self.config.layers):
             h = self.graph_encoder[_](graph, h)
-        logits = self.classifier(h)
-        return logits
+        return h
 
 
 class RGDTEncoder(nn.Module):
@@ -99,13 +92,7 @@ class RGDTEncoder(nn.Module):
                                                       rescale_res=self.config.rescale_res,
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
-        self.classifier = nn.Linear(in_features=self.config.hidden_dim, out_features=self.config.num_classes)
-        self.reset_parameters()
         self.dummy_param = nn.Parameter(torch.empty(0))
-
-    def reset_parameters(self):
-        gain = nn.init.calculate_gain('relu')
-        nn.init.xavier_normal_(self.classifier.weight, gain=gain)
 
     def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
         if rel_emb is not None:
@@ -120,5 +107,20 @@ class RGDTEncoder(nn.Module):
         h = self.graph_encoder[0](graph, e_h, r_h)
         for _ in range(1, self.config.layers):
             h = self.graph_encoder[_](graph, h)
+        return h
+
+
+class GraphNodeClassification(nn.Module):
+    def __init__(self, config):
+        super(GraphNodeClassification, self).__init__()
+        self.config = config
+        if self.config.relation_encoder:
+            self.graph_encoder = RGDTEncoder(config=self.config)
+        else:
+            self.graph_encoder = GDTEncoder(config=self.config)
+        self.classifier = LinearClassifier(model_dim=self.config.hidden_dim, num_of_classes=self.config.num_classes)
+
+    def forward(self, graph, inputs: Tensor):
+        h = self.graph_encoder(graph, inputs)
         logits = self.classifier(h)
         return logits

@@ -1,8 +1,8 @@
 import numpy as np
 import time
 import torch
-from codes.gdt_encoder import GDTEncoder
-from codes.gdt_v2_encoder import GDTEncoder as GDTEncoderV2
+from codes.gdt_encoder import GraphNodeClassification as NodeClassifier
+from codes.gdt_v2_encoder import GraphNodeClassification as NodeClassifierV2
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
@@ -153,11 +153,12 @@ def main(args):
         # create model
         seed_everything(seed=args.seed)
         if args.encoder_v2:
-            model = GDTEncoderV2(config=args)
+            model = NodeClassifier(config=args)
         else:
-            model = GDTEncoder(config=args)
-        model = GDTEncoder(config=args)
+            model = NodeClassifierV2(config=args)
         model.to(args.device)
+        if args.relation_encoder:
+            model.init_graph_ember(ent_emb=features, ent_freeze=True)
         # ++++++++++++++++++++++++++++++++++++
         logging.info('Model Parameter Configuration:')
         for name, param in model.named_parameters():
