@@ -11,36 +11,36 @@ class GDTEncoderV2(nn.Module):
         self.config = config
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayerV2(in_ent_feats=self.config.node_emb_dim,
-                                                  out_ent_feats=self.config.hidden_dim,
-                                                  num_heads=self.config.head_num,
-                                                  layer_idx=1,
-                                                  hop_num=self.config.gnn_hop_num,
-                                                  alpha=self.config.alpha,
-                                                  concat=self.config.concat,
-                                                  layer_num=self.config.layers,
-                                                  feat_drop=self.config.feat_drop,
-                                                  attn_drop=self.config.attn_drop,
-                                                  edge_drop=self.config.edge_drop,
-                                                  rescale_res=self.config.rescale_res,
-                                                  residual=self.config.residual,
-                                                  ppr_diff=self.config.ppr_diff))
+                                                    out_ent_feats=self.config.hidden_dim,
+                                                    num_heads=self.config.head_num,
+                                                    layer_idx=1,
+                                                    hop_num=self.config.gnn_hop_num,
+                                                    alpha=self.config.alpha,
+                                                    concat=self.config.concat,
+                                                    layer_num=self.config.layers,
+                                                    feat_drop=self.config.feat_drop,
+                                                    attn_drop=self.config.attn_drop,
+                                                    edge_drop=self.config.edge_drop,
+                                                    rescale_res=self.config.rescale_res,
+                                                    residual=self.config.residual,
+                                                    ppr_diff=self.config.ppr_diff))
 
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
             self.graph_encoder.append(module=GDTLayerV2(in_ent_feats=hidden_dim,
-                                                      out_ent_feats=self.config.hidden_dim,
-                                                      num_heads=self.config.head_num,
-                                                      layer_idx=_ + 1,
-                                                      hop_num=self.config.gnn_hop_num,
-                                                      alpha=self.config.alpha,
-                                                      edge_drop=self.config.edge_drop,
-                                                      layer_num=self.config.layers,
-                                                      feat_drop=self.config.feat_drop,
-                                                      attn_drop=self.config.attn_drop,
-                                                      concat=self.config.concat,
-                                                      residual=self.config.residual,
-                                                      rescale_res=self.config.rescale_res,
-                                                      ppr_diff=self.config.ppr_diff))
+                                                        out_ent_feats=self.config.hidden_dim,
+                                                        num_heads=self.config.head_num,
+                                                        layer_idx=_ + 1,
+                                                        hop_num=self.config.gnn_hop_num,
+                                                        alpha=self.config.alpha,
+                                                        edge_drop=self.config.edge_drop,
+                                                        layer_num=self.config.layers,
+                                                        feat_drop=self.config.feat_drop,
+                                                        attn_drop=self.config.attn_drop,
+                                                        concat=self.config.concat,
+                                                        residual=self.config.residual,
+                                                        rescale_res=self.config.rescale_res,
+                                                        ppr_diff=self.config.ppr_diff))
 
     def forward(self, graph, inputs: Tensor):
         h = inputs
@@ -69,35 +69,35 @@ class RGDTEncoderV2(nn.Module):
         ent_in_dim = self.config.node_emb_dim
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=RGDTLayerV2(in_ent_feats=ent_in_dim,
-                                                   out_ent_feats=self.config.hidden_dim,
-                                                   in_rel_feats=rel_in_dim,
-                                                   layer_idx=1,
-                                                   num_heads=self.config.head_num,
-                                                   hop_num=self.config.gnn_hop_num,
-                                                   alpha=self.config.alpha,
-                                                   layer_num=self.config.layers,
-                                                   feat_drop=self.config.feat_drop,
-                                                   attn_drop=self.config.attn_drop,
-                                                   edge_drop=self.config.edge_drop,
-                                                   concat=self.config.concat,
-                                                   residual=self.config.residual,
-                                                   ppr_diff=self.config.ppr_diff))
+                                                     out_ent_feats=self.config.hidden_dim,
+                                                     in_rel_feats=rel_in_dim,
+                                                     layer_idx=1,
+                                                     num_heads=self.config.head_num,
+                                                     hop_num=self.config.gnn_hop_num,
+                                                     alpha=self.config.alpha,
+                                                     layer_num=self.config.layers,
+                                                     feat_drop=self.config.feat_drop,
+                                                     attn_drop=self.config.attn_drop,
+                                                     edge_drop=self.config.edge_drop,
+                                                     concat=self.config.concat,
+                                                     residual=self.config.residual,
+                                                     ppr_diff=self.config.ppr_diff))
         hidden_dim = 4 * self.config.hidden_dim if self.config.concat else self.config.hidden_dim
         for _ in range(1, self.config.layers):
             self.graph_encoder.append(module=GDTLayerV2(in_ent_feats=hidden_dim,
-                                                      layer_idx=_+1,
-                                                      out_ent_feats=self.config.hidden_dim,
-                                                      num_heads=self.config.head_num,
-                                                      hop_num=self.config.gnn_hop_num,
-                                                      alpha=self.config.alpha,
-                                                      layer_num=self.config.layers,
-                                                      feat_drop=self.config.feat_drop,
-                                                      attn_drop=self.config.attn_drop,
-                                                      edge_drop=self.config.edge_drop,
-                                                      concat=self.config.concat,
-                                                      residual=self.config.residual,
-                                                      rescale_res=self.config.rescale_res,
-                                                      ppr_diff=self.config.ppr_diff))
+                                                        layer_idx=_ + 1,
+                                                        out_ent_feats=self.config.hidden_dim,
+                                                        num_heads=self.config.head_num,
+                                                        hop_num=self.config.gnn_hop_num,
+                                                        alpha=self.config.alpha,
+                                                        layer_num=self.config.layers,
+                                                        feat_drop=self.config.feat_drop,
+                                                        attn_drop=self.config.attn_drop,
+                                                        edge_drop=self.config.edge_drop,
+                                                        concat=self.config.concat,
+                                                        residual=self.config.residual,
+                                                        rescale_res=self.config.rescale_res,
+                                                        ppr_diff=self.config.ppr_diff))
         self.dummy_param = nn.Parameter(torch.empty(0))
 
     def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
