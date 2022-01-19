@@ -87,6 +87,12 @@ def default_parser():
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
     parser.add_argument('--relation_encoder', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5')
+    parser.add_argument('--sub_graph_hop_num', type=int, default=6)
+    parser.add_argument('--sub_graph_edge_dir', type=str, default='in', choices=['in', 'out'])
+    parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
+    parser.add_argument('--arw_position', type=boolean_string, default='false')
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--node_emb_dim', type=int, default=300)
     parser.add_argument('--num_classes', type=int, default=-1)
     parser.add_argument('--num_entities', type=int, default=2)
@@ -111,7 +117,6 @@ def default_parser():
     parser.add_argument('--layers', type=int, default=2)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--eval_batch_size', type=int, default=32)
-    parser.add_argument('--per_gpu_pretrain_batch_size', type=int, default=16)
     parser.add_argument('--train_batch_size', type=int, default=16)
     # Environment+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--cpu_num', type=int, default=8)

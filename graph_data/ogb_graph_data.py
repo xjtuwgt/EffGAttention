@@ -1,5 +1,8 @@
 from ogb.nodeproppred import DglNodePropPredDataset
 from evens import HOME_DATA_FOLDER as ogb_root
+import torch
+from codes.graph_utils import construct_special_graph_dictionary
+
 
 def ogb_nodeprop_graph_reconstruction(dataset: str):
     """
@@ -38,3 +41,15 @@ def ogb_train_valid_test(node_split_idx: dict, data_type: str):
     data_len = data_node_ids.shape[0]
     return data_len, data_node_ids
 
+
+def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5):
+    graph, node_split_idx, node_features, n_entities, n_relations, n_classes, n_feats = \
+        ogb_nodeprop_graph_reconstruction(dataset=dataset)
+    graph, number_of_relations, special_node_dict, \
+    special_relation_dict = construct_special_graph_dictionary(graph=graph, n_relations=n_relations, hop_num=hop_num)
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    number_of_nodes = graph.number_of_nodes()
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    graph.ndata.update({'nid': torch.arange(0, number_of_nodes, dtype=torch.long)})
+    return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
+           special_relation_dict, node_split_idx

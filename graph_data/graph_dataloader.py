@@ -4,6 +4,8 @@ import dgl
 from numpy import random
 from torch.utils.data import Dataset
 from graph_data.citation_graph_data import citation_train_valid_test
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
+from graph_data.ogb_graph_data import ogb_k_hop_graph_reconstruction
 from graph_data.ogb_graph_data import ogb_train_valid_test
 from codes.graph_utils import anchor_node_sub_graph_extractor
 from torch.utils.data import DataLoader
@@ -13,7 +15,6 @@ class NodeClassificationSubGraphDataset(Dataset):
     """
     Graph representation learning with node labels
     """
-
     def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
                  special_entity2id: dict, special_relation2id: dict, data_type: str, graph_type: str,
                  bi_directed: bool = True, self_loop: bool = False, edge_dir: str = 'in',
@@ -80,24 +81,32 @@ class NodeClassificationSubGraphDataset(Dataset):
         return {'batch_graph': (batch_graphs, batch_graph_cls, batch_anchor_id), 'batch_label': batch_label}
 
 
-class Node_classification_data_helper(object):
-    def __init__(self, graph, fanouts, number_of_nodes: int, number_of_relations: int, num_class: int,
-                 special_entity_dict: dict, special_relation_dict: dict, train_batch_size: int,
-                 val_batch_size: int, graph_type: str, edge_dir: str = 'in', self_loop: bool = False,
-                 node_split_idx: dict = None):
+class node_classification_data_helper(object):
+    def __init__(self, config):
+        self.config = config
+        self.graph_type = self.config.graph_type
+        if self.graph_type == 'citation':
+            graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
+            citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
+                                                hop_num=self.config.subgraph_hop_num, rand_split=False)
+            self.node_split_idx = None
+        else:
+            graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
+            special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
+                                                                                   hop_num=self.config.sub_graph_hop_num)
+            self.node_split_idx = node_split_idx
         self.graph = graph
-        self.fanouts = fanouts
         self.number_of_nodes = number_of_nodes
         self.number_of_relations = number_of_relations
-        self.special_entity_dict = special_entity_dict
+        self.num_class = n_classes
+        self.n_feats = n_feats
+        self.special_entity_dict = special_node_dict
         self.special_relation_dict = special_relation_dict
-        self.train_batch_size = train_batch_size
-        self.val_batch_size = val_batch_size
-        self.num_class = num_class
-        self.graph_type = graph_type
-        self.node_split_idx = node_split_idx
-        self.self_loop = self_loop
-        self.edge_dir = edge_dir
+        self.train_batch_size = self.config.train_batch_size
+        self.val_batch_size = self.config.eval_batch_size
+        self.edge_dir = self.config.sub_graph_edge_dir
+        self.self_loop = self.config.sub_graph_self_loop
+        self.fanouts = [int(_) for _ in self.config.sub_graph_fanouts.split(',')]
 
     def data_loader(self, data_type):
         dataset = NodeClassificationSubGraphDataset(graph=self.graph, nentity=self.number_of_nodes,
