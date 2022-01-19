@@ -1,5 +1,7 @@
 import torch.nn as nn
 from codes.gdt_subgraph_encoder import GDTEncoder, RGDTEncoder
+from torch import Tensor
+from codes.gnn_utils import LinearClassifier
 
 
 class Projector(nn.Module):
@@ -59,6 +61,35 @@ class SimSiam(nn.Module):
             return self.projector(z)
         else:
             return z
+
+
+class SimSiam_NodeClassification(nn.Module):
+    def __init__(self, config):
+        super(SimSiam_NodeClassification, self).__init__()
+        self.config = config
+        if self.config.relation_encoder:
+            self.graph_encoder = RGDTEncoder(config=config)
+            self.out_dim = 4 * config.hidden_dim if config.concat else config.hidden_dim
+        else:
+            self.graph_encoder = GDTEncoder(config=config)
+            self.out_dim = config.hidden_dim
+        self.simsiam_model = SimSiam(backbone=self.graph_encoder, backbone_out_dim=self.out_dim)
+        self.classifier = LinearClassifier(model_dim=self.out_dim, num_of_classes=self.config.num_classes)
+
+    def graph_embed_setting(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
+        if self.config.relation_encoder:
+            self.graph_encoder.init_graph_ember(ent_emb=ent_emb, ent_freeze=ent_freeze,
+                                                rel_emb=rel_emb, rel_freeze=rel_freeze)
+        else:
+            self.graph_encoder.init_graph_ember(ent_emb=ent_emb, ent_freeze=ent_freeze)
+
+    def forward(self, batch):
+        h = self.simsiam_model.encode(x=batch, cls_or_anchor=self.config.cls_or_anchor,
+                                      project=self.config.siam_project)
+        logits = self.classifier(h)
+        return logits
+
+
 
 
 def SimSiam_Model_Builder(config):
