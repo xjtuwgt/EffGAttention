@@ -93,7 +93,7 @@ def default_parser():
     parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
     parser.add_argument('--rand_walk_restart_prob', type=float, default=0.8)
     parser.add_argument('--graph_augmentation', type=boolean_string, default='false')
-    parser.add_argument('--relative_position', type=boolean_string, default='false')
+    parser.add_argument('--relative_position', type=boolean_string, default='true')
     parser.add_argument('--cls_or_anchor', type=str, default='cls', choices=["cls", "anchor"])
     parser.add_argument('--siam_project', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
