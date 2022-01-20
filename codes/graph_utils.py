@@ -137,7 +137,7 @@ def sub_graph_rwr_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cls_nod
     # ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     walk_length = len(fanouts)
     num_traces = max(64,
-                     int((graph.out_degree(anchor_node_ids.data.item()) * math.e
+                     int((graph.out_degrees(anchor_node_ids.data.item()) * math.e
                           / (math.e - 1) / restart_prob) + 0.5),
                      torch.prod(torch.tensor(fanouts, dtype=torch.long)).data.item())
     num_traces = num_traces * 5
@@ -374,7 +374,7 @@ def anchor_sub_graph_rwr_augmentation(subgraph, anchor_idx, edge_dir: str, speci
         raw_sub_graph = subgraph
     assert anchor_idx < raw_sub_graph.number_of_nodes() - 1
     max_nodes_for_seed = max(max_nodes_per_seed,
-                             int((raw_sub_graph.out_degree(anchor_idx) * math.e / (math.e - 1) / restart_prob) + 0.5))
+                             int((raw_sub_graph.out_degrees(anchor_idx) * math.e / (math.e - 1) / restart_prob) + 0.5))
 
     trace, _ = random_walk(g=raw_sub_graph, nodes=[anchor_idx] * (max_nodes_for_seed * hop_num * 2), length=hop_num,
                            restart_prob=restart_prob)
