@@ -127,6 +127,63 @@ def sub_graph_neighbor_sample(graph, anchor_node_ids: Tensor, cls_node_ids: Tens
     return neighbors_dict, node_arw_label_dict, edge_dict
 
 
+def sub_graph_rwr_sample(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list, restart_prob: float = 0.8,
+                         edge_dir: str = 'in', debug=False):
+    """
+    :param graph:
+    :param anchor_node_ids:
+    :param cls_node_ids:
+    :param fanouts:
+    :param edge_dir:
+    :param debug:
+    :return:
+    """
+    assert edge_dir in {'in', 'out'}
+    start_time = time() if debug else 0
+    if edge_dir == 'in':
+        raw_graph = dgl.reverse(graph, copy_ndata=True, copy_edata=True)
+    else:
+        raw_graph = graph
+    # ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    walk_length = len(fanouts)
+    num_traces = torch.prod(torch.tensor(fanouts, dtype=torch.long)).data.item()
+    assert num_traces > 1
+    neighbors_dict = {'anchor': (anchor_node_ids, torch.tensor([1], dtype=torch.long)),
+                      'cls': (cls_node_ids, torch.tensor([1], dtype=torch.long))}
+    edge_dict = {}  # sampled edge dictionary: (head, t_id, tail)
+    # ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    anchor_node_ids = anchor_node_ids.repeat(num_traces)
+    traces, _ = random_walk(g=raw_graph, nodes=anchor_node_ids, length=walk_length, restart_prob=restart_prob)
+    trace_idx = (traces >= 0).sum(dim=1) > 1
+    traces = traces[trace_idx]
+    for hop in range(1, walk_length):
+        trace_i = traces[:, hop]
+        trace_i = trace_i[trace_i >= 0]
+        if trace_i.shape[0] > 0:
+            neighbors_dict['{}_hop_{}'.format(edge_dir, hop)] = torch.unique(trace_i, return_counts=True)
+    src_nodes, dst_nodes = traces[:, :-1].flatten(), traces[:, 1:].flatten()
+    true_edge_idx = dst_nodes >= 0
+    src_nodes, dst_nodes = src_nodes[true_edge_idx], dst_nodes[true_edge_idx]
+    edge_ids = raw_graph.edge_ids(src_nodes, dst_nodes)
+    edge_tids = raw_graph.edata['rid'][edge_ids]
+    eid_list, tid_list = edge_ids.tolist(), edge_tids.tolist()
+    src_node_list, dst_node_list = src_nodes.tolist(), dst_nodes.tolist()
+    for _, eid in enumerate(eid_list):
+        edge_dict[eid] = (src_node_list[_], tid_list[_], dst_node_list[_])
+    ##############################################################################################
+    node_arw_label_dict = {anchor_node_ids[0].data.item(): 1, cls_node_ids[0].data.item(): 0}
+    for hop in range(1, walk_length):
+        hop_neighbors = neighbors_dict['{}_hop_{}'.format(edge_dir, hop)]
+        for neighbor in hop_neighbors[0].tolist():
+            if neighbor not in node_arw_label_dict:
+                node_arw_label_dict[neighbor] = hop + 1
+    ##############################################################################################
+    end_time = time() if debug else 0
+    if debug:
+        print('Sampling time = {:.4f} seconds'.format(end_time - start_time))
+    return neighbors_dict, node_arw_label_dict, edge_dict
+
+
 def sub_graph_constructor(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict: dict, bi_directed: bool = True):
     """
     :param graph: original graph
@@ -324,7 +381,6 @@ def anchor_sub_graph_rwr_augmentation(subgraph, anchor_idx, edge_dir: str, speci
         neighbors_i = torch.unique(trace_i).tolist()
         if len(neighbors_i) > 0:
             rwr_hop_dict[hop] = neighbors_i
-
 
     return
 
