@@ -82,5 +82,5 @@ def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5, oon='zero'):
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata.update({'nid': torch.arange(0, number_of_nodes, dtype=torch.long)})
     assert graph.ndata['nid'][-1] == special_node_dict['cls'] and special_node_dict['cls'] == number_of_nodes - 1
-    return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
-           special_relation_dict, node_split_idx
+    return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict, \
+           node_split_idx

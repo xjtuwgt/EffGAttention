@@ -69,7 +69,7 @@ def citation_graph_rand_split_construction(dataset: str):
     train_node_ids = sorted_graph_node_ids[:train_node_num]
     valid_node_ids = sorted_graph_node_ids[train_node_num:(train_node_num + valid_node_num)]
     test_node_ids = sorted_graph_node_ids[(train_node_num + valid_node_num):]
-    ##++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     new_graph = copy.deepcopy(graph)
     new_train_mask = torch.as_tensor(train_mask).fill_(False)
     new_valid_mask = torch.as_tensor(valid_mask).fill_(False)

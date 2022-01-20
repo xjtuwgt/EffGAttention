@@ -5,9 +5,9 @@ from codes.gnn_utils import EmbeddingLayer
 import torch
 
 
-class GDTEncoder(nn.Module):
+class GDTSubGraphEncoder(nn.Module):
     def __init__(self, config):
-        super(GDTEncoder, self).__init__()
+        super(GDTSubGraphEncoder, self).__init__()
         self.config = config
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
         if self.config.relative_position:
@@ -74,9 +74,9 @@ class GDTEncoder(nn.Module):
             return batch_graph_embed
 
 
-class RGDTEncoder(nn.Module):
+class RGDTSubGraphEncoder(nn.Module):
     def __init__(self, config):
-        super(RGDTEncoder, self).__init__()
+        super(RGDTSubGraphEncoder, self).__init__()
         self.config = config
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
         if self.config.node_emb_dim == self.config.rel_emb_dim:

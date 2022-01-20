@@ -28,7 +28,6 @@ class SimSiam(nn.Module):
     """
     Build a SimSiam model.
     """
-
     def __init__(self, backbone: nn.Module, backbone_out_dim: int):
         super(SimSiam, self).__init__()
         # create the encoder = base_encoder + a two-layer projector
