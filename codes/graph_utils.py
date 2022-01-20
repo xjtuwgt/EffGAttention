@@ -247,8 +247,7 @@ def no_multi_hop_node_augmentation(subgraph, loop_r):
 
 
 def anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dict: dict,
-                                  special_relation_dict: dict, edge_dir: str,
-                                  bi_directed: bool = True):
+                                  special_relation_dict: dict, edge_dir: str, bi_directed: bool = True):
     """
     :param subgraph: sub-graph with anchor-node
     :param parent2sub_dict: map parent ids to the sub-graph node ids
@@ -303,21 +302,28 @@ def anchor_sub_graph_augmentation(subgraph, parent2sub_dict: dict, neighbors_dic
     return aug_sub_graph
 
 
-def anchor_sub_graph_rwr_augmentation(subgraph, parent2sub_dict: dict, neighbors_dict: dict,
-                                      special_relation_dict: dict, edge_dir: str, restart_prob: float = 0.8,
-                                      max_nodes_per_seed: int = 64, bi_directed: bool = True):
+def anchor_sub_graph_rwr_augmentation(subgraph, anchor_idx, edge_dir: str, special_relation_dict: dict, hop_num: int,
+                                      restart_prob: float = 0.8,
+                                      max_nodes_per_seed: int = 64, bi_directed: bool = True, all_multi_hop=False):
     assert edge_dir in {'in', 'out'}
+    aug_sub_graph = copy.deepcopy(subgraph)
     if edge_dir == 'in':
         raw_sub_graph = dgl.reverse(subgraph, copy_ndata=True, copy_edata=True)
     else:
         raw_sub_graph = subgraph
-    anchor_parent_node_id = neighbors_dict['anchor'][0][0].data.item()
-    anchor_idx = parent2sub_dict[anchor_parent_node_id]  # node idx in sub-graph
     assert anchor_idx < raw_sub_graph.number_of_nodes() - 1
     max_nodes_for_seed = max(max_nodes_per_seed,
                              int((raw_sub_graph.out_degree(anchor_idx) * math.e / (math.e - 1) / restart_prob) + 0.5))
-    traces, types = random_walk(g=raw_sub_graph, nodes=[anchor_idx], length=max_nodes_for_seed * 3,
-                                restart_prob=restart_prob)
+
+    trace, _ = random_walk(g=raw_sub_graph, nodes=[anchor_idx] * (max_nodes_for_seed * hop_num * 2), length=hop_num,
+                           restart_prob=restart_prob)
+    rwr_hop_dict = {}
+    for hop in range(2, hop_num + 1):
+        trace_i = trace[:, hop]
+        trace_i = trace_i[trace_i >= 0]
+        neighbors_i = torch.unique(trace_i).tolist()
+        if len(neighbors_i) > 0:
+            rwr_hop_dict[hop] = neighbors_i
 
 
     return
@@ -352,6 +358,12 @@ def graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, special_
     aug_sub_graph, _ = cls_node_addition(subgraph=aug_sub_graph, cls_parent_node_id=cls_parent_node_id,
                                          special_relation_dict=special_relation_dict)
     return aug_sub_graph
+
+
+# def graph_multiview_rwr_augmentation(subgraph, hop_num: int, edge_dir: str, special_entity_dict: dict,
+#                                      special_relation_dict: dict):
+#
+#     return
 
 
 def sub_graph_augmentation(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
