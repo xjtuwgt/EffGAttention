@@ -19,7 +19,7 @@ def citation_graph_reconstruction(dataset: str):
     else:
         raise ValueError('Unknown dataset: {}'.format(dataset))
     graph = data[0]
-    n_classes = data.num_labels
+    n_classes = data.num_classes
     node_features = graph.ndata['feat']
     n_feats = node_features.shape[1]
     graph = dgl.remove_self_loop(g=graph)
