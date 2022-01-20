@@ -48,9 +48,9 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     print('Number of edges = {}'.format(graph.number_of_edges()))
     print('Number of features = {}'.format(n_feats))
     print('Number of classes = {}'.format(n_classes))
-    print('Number of train = {}'.format(node_split_idx['train'].shape))
-    print('Number of valid = {}'.format(node_split_idx['valid'].shape))
-    print('Number of test = {}'.format(node_split_idx['test'].shape))
+    print('Number of train = {}'.format(node_split_idx['train'].shape[0]))
+    print('Number of valid = {}'.format(node_split_idx['valid'].shape[0]))
+    print('Number of test = {}'.format(node_split_idx['test'].shape[0]))
     return graph, node_split_idx, node_features, nentities, nrelations, n_classes, n_feats
 
 
