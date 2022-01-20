@@ -124,7 +124,7 @@ class self_supervised_node_data_helper(object):
         batch_size = self.train_batch_size
         shuffle = True
         data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
-                                 collate_fn=SubGraphPairDataset.collate_fn, num_workers=4)
+                                 collate_fn=SubGraphPairDataset.collate_fn, num_workers=8)
         return data_loader
 
 
