@@ -144,33 +144,35 @@ def sub_graph_rwr_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cls_nod
     assert num_traces > 1
     neighbors_dict = {'anchor': (anchor_node_ids, torch.tensor([1], dtype=torch.long)),
                       'cls': (cls_node_ids, torch.tensor([1], dtype=torch.long))}
+    node_pos_label_dict = {anchor_node_ids[0].data.item(): 1, cls_node_ids[0].data.item(): 0}
     edge_dict = {}  # sampled edge dictionary: (head, t_id, tail)
-    # ##+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     anchor_node_ids = anchor_node_ids.repeat(num_traces)
     traces, _ = random_walk(g=raw_graph, nodes=anchor_node_ids, length=walk_length, restart_prob=restart_prob)
     valid_trace_idx = (traces >= 0).sum(dim=1) > 1
     traces = traces[valid_trace_idx]
-    for hop in range(1, walk_length):
+    for hop in range(1, walk_length + 1):
         trace_i = traces[:, hop]
         trace_i = trace_i[trace_i >= 0]
         if trace_i.shape[0] > 0:
-            neighbors_dict['{}_hop_{}'.format(edge_dir, hop)] = torch.unique(trace_i, return_counts=True)
+            hop_neighbors = torch.unique(trace_i, return_counts=True)
+            neighbors_dict['{}_hop_{}'.format(edge_dir, hop)] = hop_neighbors
+            for neighbor in hop_neighbors[0].tolist():
+                if neighbor not in node_pos_label_dict:
+                    node_pos_label_dict[neighbor] = hop + 1
+    # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     src_nodes, dst_nodes = traces[:, :-1].flatten(), traces[:, 1:].flatten()
     valid_edge_idx = dst_nodes >= 0
     src_nodes, dst_nodes = src_nodes[valid_edge_idx], dst_nodes[valid_edge_idx]
-    edge_ids = raw_graph.edge_ids(src_nodes, dst_nodes)
-    edge_tids = raw_graph.edata['rid'][edge_ids]
+    if edge_dir == 'in':
+        edge_ids = graph.edge_ids(dst_nodes, src_nodes)
+    else:
+        edge_ids = graph.edge_ids(src_nodes, dst_nodes)
+    edge_tids = graph.edata['rid'][edge_ids]
     eid_list, tid_list = edge_ids.tolist(), edge_tids.tolist()
     src_node_list, dst_node_list = src_nodes.tolist(), dst_nodes.tolist()
     for _, eid in enumerate(eid_list):
         edge_dict[eid] = (src_node_list[_], tid_list[_], dst_node_list[_])
-    ##############################################################################################
-    node_pos_label_dict = {anchor_node_ids[0].data.item(): 1, cls_node_ids[0].data.item(): 0}
-    for hop in range(1, walk_length):
-        hop_neighbors = neighbors_dict['{}_hop_{}'.format(edge_dir, hop)]
-        for neighbor in hop_neighbors[0].tolist():
-            if neighbor not in node_pos_label_dict:
-                node_pos_label_dict[neighbor] = hop + 1
     ##############################################################################################
     end_time = time() if debug else 0
     if debug:
@@ -249,13 +251,25 @@ def cls_node_addition_to_graph(subgraph, cls_parent_node_id: int, special_relati
 
 
 def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
-                                    special_relation2id: dict, edge_dir: str = 'in', self_loop: bool = False,
+                                    special_relation2id: dict, samp_type: str = 'ns', restart_prob: float = 0.8,
+                                    edge_dir: str = 'in', self_loop: bool = False,
                                     cls: bool = True, bi_directed: bool = False, debug=False):
-    neighbors_dict, node_pos_label_dict, edge_dict = sub_graph_neighbor_sample(graph=graph,
-                                                                               anchor_node_ids=anchor_node_ids,
-                                                                               cls_node_ids=cls_node_ids,
-                                                                               fanouts=fanouts, edge_dir=edge_dir,
-                                                                               debug=debug)
+    if samp_type == 'ns':
+        neighbors_dict, node_pos_label_dict, edge_dict = sub_graph_neighbor_sample(graph=graph,
+                                                                                   anchor_node_ids=anchor_node_ids,
+                                                                                   cls_node_ids=cls_node_ids,
+                                                                                   fanouts=fanouts, edge_dir=edge_dir,
+                                                                                   debug=debug)
+    elif samp_type == 'rwr':
+        neighbors_dict, node_pos_label_dict, edge_dict = sub_graph_rwr_sample(graph=graph,
+                                                                              anchor_node_ids=anchor_node_ids,
+                                                                              cls_node_ids=cls_node_ids,
+                                                                              fanouts=fanouts,
+                                                                              restart_prob=restart_prob,
+                                                                              edge_dir=edge_dir,
+                                                                              debug=debug)
+    else:
+        raise 'Sampling method {} is not supported!'.format(samp_type)
     subgraph = sub_graph_construction(graph=graph, edge_dict=edge_dict, bi_directed=bi_directed,
                                       neighbors_dict=neighbors_dict)
 
