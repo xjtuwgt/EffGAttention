@@ -1,0 +1,1439 @@
+import numpy as np
+import time
+import torch
+from codes.gdt_encoder import RGDTEncoder
+from torch.optim import Adam
+from codes.default_argparser import default_parser, complete_default_parser
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, label_mask_drop
+from transformers.optimization import get_cosine_schedule_with_warmup
+import logging
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def accuracy(logits, labels, debug=False):
+    _, indices = torch.max(logits, dim=1)
+    correct = torch.sum(indices == labels)
+    if debug:
+        return correct.item() * 1.0 / len(labels), indices, labels
+    return correct.item() * 1.0 / len(labels)
+
+
+def evaluate(graph, model, labels, mask, debug=False):
+    model.eval()
+    with torch.no_grad():
+        logits = model(graph)
+        logits = logits[mask]
+        labels = labels[mask]
+        return accuracy(logits, labels, debug=debug)
+
+
+def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
+    dur = []
+    best_val_acc = 0.0
+    best_test_acc = 0.0
+    t0 = time.time()
+    train_mask_backup = train_mask.clone()
+    patience_count = 0
+    n_edges = g.number_of_edges()
+    loss_fcn = torch.nn.CrossEntropyLoss()
+    torch.autograd.set_detect_anomaly(True)
+    for epoch in range(args.num_train_epochs):
+        model.train()
+        if epoch >= 3:
+            t0 = time.time()
+        # forward
+        logits = model(g)
+        # train_mask = label_mask_drop(train_mask=train_mask_backup, drop_ratio=0.25)
+        loss = loss_fcn(logits[train_mask], labels[train_mask])
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+        optimizer.step()
+        scheduler.step()
+
+        if epoch >= 3:
+            dur.append(time.time() - t0)
+
+        train_acc = accuracy(logits[train_mask], labels[train_mask])
+
+        if args.fastmode:
+            val_acc = accuracy(logits[val_mask], labels[val_mask])
+            test_acc = accuracy(logits[test_mask], labels[test_mask])
+        else:
+            val_acc = evaluate(g, model, labels, val_mask)
+            test_acc = evaluate(g, model, labels, test_mask)
+
+        if best_val_acc <= val_acc:
+            best_val_acc = val_acc
+            best_test_acc = test_acc
+            patience_count = 0
+        else:
+            patience_count = patience_count + 1
+            if patience_count >= args.patience:
+                break
+
+        logger.info("Epoch {:04d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
+                    " ValAcc {:.4f} | B/ValAcc {:.4f} | B/TestAcc {:.4f} | ETputs (KTEPS) {:.2f}".
+                    format(epoch, np.mean(dur), loss.item(), train_acc,
+                           val_acc, best_val_acc, best_test_acc, n_edges / np.mean(dur) / 1000))
+
+    logger.info('\n')
+    test_acc, test_predictions, test_true_labels = evaluate(g, model, labels, test_mask, debug=True)
+    logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc,
+                                                                                                 best_val_acc,
+                                                                                                 best_test_acc))
+    return test_acc, best_val_acc, best_test_acc
+
+
+def main(args):
+    args = complete_default_parser(args=args)
+    g, number_of_nodes, n_relations, n_classes, _, special_relation_dict = \
+        citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5, rand_split=False)
+    logger.info("Number of relations = {}".format(n_relations))
+    args.num_classes = n_classes
+    args.num_entities = number_of_nodes
+    args.num_relations = n_relations
+    args.node_emb_dim = g.ndata['feat'].shape[1]
+    g = g.int().to(args.device)
+    features = g.ndata['feat']
+    labels = g.ndata['label']
+    train_mask = g.ndata['train_mask']
+    val_mask = g.ndata['val_mask']
+    test_mask = g.ndata['test_mask']
+    n_edges = g.number_of_edges()
+    logger.info("""----Data statistics------'
+      #Edges %d
+      #Classes %d
+      #Train samples %d
+      #Val samples %d
+      #Test samples %d""" %
+          (n_edges, n_classes,
+           train_mask.int().sum().item(),
+           val_mask.int().sum().item(),
+           test_mask.int().sum().item()))
+
+    model = RGDTEncoder(config=args)
+    model.to(args.device)
+    model.init_graph_ember(ent_emb=features, ent_freeze=True)
+    print(model)
+    optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+                                                num_training_steps=args.num_train_epochs)
+
+    test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+                                                        val_mask=val_mask, test_mask=test_mask,
+                                                        labels=labels,
+                                                        optimizer=optimizer, scheduler=scheduler,
+                                                        args=args)
+
+    print(test_acc, best_val_acc, best_test_acc)
+
+    # feat_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
+    # attn_drop_ratio_list = np.arange(0.3, 0.7, 0.05).tolist()
+    # lr_ratio_list = [2e-4, 5e-4, 1e-3, 2e-3]
+    #
+    # acc_list = []
+    # search_best_test_acc = 0.0
+    # search_best_settings = None
+    # for f_dr in feat_drop_ratio_list:
+    #     for a_dr in attn_drop_ratio_list:
+    #         for lr in lr_ratio_list:
+    #             args.learning_rate = lr
+    #             args.feat_drop = f_dr
+    #             args.attn_drop = a_dr
+    #             # create model
+    #             model = RGDTEncoder(config=args)
+    #             model.to(args.device)
+    #             model.init_graph_ember(ent_emb=features, ent_freeze=True)
+    #             print(model)
+    #             optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    #             scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+    #                                                         num_training_steps=args.num_train_epochs)
+    #
+    #             test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+    #                                                                 val_mask=val_mask, test_mask=test_mask,
+    #                                                                 labels=labels,
+    #                                                                 optimizer=optimizer, scheduler=scheduler,
+    #                                                                 args=args)
+    #             acc_list.append((f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+    #             logger.info('*' * 50)
+    #             logger.info('{}\t{}\t{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc))
+    #             logger.info('*' * 50)
+    #             if search_best_test_acc < best_test_acc:
+    #                 search_best_test_acc = best_test_acc
+    #                 search_best_settings = (f_dr, a_dr, lr, test_acc, best_val_acc, best_test_acc)
+    # for setting_acc in acc_list:
+    #     print(setting_acc)
+    # print(search_best_test_acc)
+    # print(search_best_settings)
+
+
+if __name__ == '__main__':
+    main(default_parser().parse_args())
+
+
+class RGDTLayer(nn.Module):
+    """
+    Heterogeneous graph neural network (first layer) with different edge type
+    """
+    def __init__(self,
+                 in_ent_feats: int,
+                 in_rel_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int,
+                 top_k: int = 5,
+                 top_p: float = 0.75,
+                 sparse_mode: str = 'top_k',
+                 alpha: float = 0.15,
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 layer_num: int = 1,
+                 residual=True,
+                 ppr_diff=True):
+        super(RGDTLayer, self).__init__()
+
+        self.sparse_mode = sparse_mode
+        self._top_k, self._top_p = top_k, top_p
+        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
+        self.layer_num = layer_num
+
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_ent_feats = out_ent_feats
+        self._in_rel_feats = in_rel_feats
+        self._num_heads = num_heads
+        self._hop_num = hop_num
+        self._alpha = alpha
+
+        assert self._out_ent_feats % self._num_heads == 0
+        self._head_dim = self._out_ent_feats // self._num_heads
+
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_rel = nn.Linear(self._in_rel_feats, self._num_heads * self._head_dim, bias=False)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+
+        self.attn_h = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_t = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_r = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
+
+        if residual:
+            if in_ent_feats != out_ent_feats:
+                self.res_fc = nn.Linear(in_ent_feats, self._num_heads * self._head_dim, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc_ent', None)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        self.ff_layer_norm = layerNorm(self._out_ent_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
+                                                          d_hidden=4 * self._num_heads * self._head_dim)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.reset_parameters()
+        self.ppr_diff = ppr_diff
+
+    def reset_parameters(self):
+        """
+        Description
+        -----------
+        Reinitialize learnable parameters.
+        Note
+        ----
+        The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
+        The attention weights are using xavier initialization method.
+        """
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_ent_feats)/math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn_h, gain=gain)
+        nn.init.xavier_normal_(self.attn_t, gain=gain)
+        nn.init.xavier_normal_(self.attn_r, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               ' Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_head = in_dst = self.feat_drop(self.graph_layer_norm(ent_feat))
+            feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
+            rel_emb = self.feat_drop(rel_feat)
+
+            feat_rel = self.fc_rel(rel_emb).view(-1, self._num_heads, self._head_dim)
+            eh = (feat_head * self.attn_h).sum(dim=-1).unsqueeze(-1)
+            et = (feat_tail * self.attn_t).sum(dim=-1).unsqueeze(-1)
+            er = (feat_rel * self.attn_r).sum(dim=-1).unsqueeze(-1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            edge_ids = graph.edata['rid']
+            er = er[edge_ids]
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'ft': feat_enti, 'eh': eh})
+            graph.dstdata.update({'et': et})
+            graph.apply_edges(fn.u_add_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e') + er)
+            if self.sparse_mode != 'no_sparse':
+                a_score = edge_softmax(graph, e)
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
+                                                     sparse_mode=self.sparse_mode)
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
+                                                top_k_sum=a_top_sum)
+                if self.ppr_diff:
+                    graph.edata['a'] = a_n
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(a_n)
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
+            else:
+                if self.ppr_diff:
+                    graph.edata['a'] = edge_softmax(graph, e)
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata['ft']
+            # residual
+            if self.res_fc is not None:
+                resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
+
+            rst = rst.flatten(1)
+            # +++++++++++++++++++++++++++++++++++++++
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = self.feat_drop(ff_rst) + rst  # residual
+            # +++++++++++++++++++++++++++++++++++++++
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            for _ in range(self._hop_num):
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+            return feat
+
+
+import torch
+import math
+import torch.nn as nn
+from dgl.nn.pytorch.utils import Identity
+import dgl.function as fn
+from dgl import DGLHeteroGraph
+from torch import Tensor
+from torch.nn import LayerNorm as layerNorm
+from dgl.base import DGLError
+from dgl.utils import expand_as_pair
+from codes.gnn_utils import PositionWiseFeedForward, small_init_gain_v2
+
+
+def weighted_edge_softmax(graph: DGLHeteroGraph, attn_scores: Tensor, gate_scores: Tensor):
+    with graph.local_scope():
+        graph.edata['ta'] = attn_scores
+        graph.update_all(fn.copy_edge('ta', 'm_a'), fn.max('m_a', 'max_a'))
+        graph.apply_edges(fn.e_sub_v('ta', 'max_a', 'ta'))
+        graph.edata['tag'] = torch.exp(graph.edata.pop('ta')) * gate_scores
+        graph.update_all(fn.copy_edge('tag', 'm_ag'), fn.sum('m_ag', 'sum_ag'))
+        graph.apply_edges(fn.e_div_v('tag', 'sum_ag', 'a'))
+        attentions = graph.edata.pop('a')
+        return attentions
+
+
+class GatedGDTLayer(nn.Module):
+    def __init__(self,
+                 in_ent_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int = 5,
+                 alpha: float = 0.15,
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 layer_num: int = 1,
+                 residual: bool = True,
+                 ppr_diff: bool = True):
+        super(GatedGDTLayer, self).__init__()
+
+        self.layer_num = layer_num
+        self._hop_num = hop_num
+        self._alpha = alpha
+        self._num_heads = num_heads
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_feats = out_ent_feats
+        self._head_dim = out_ent_feats // num_heads
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
+
+        self.gated_head = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
+        self.gated_tail = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
+        if residual:
+            if self._in_tail_feats != self._out_feats:
+                self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc', None)
+
+        self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        self.ff_layer_norm = layerNorm(self._out_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
+        self.ppr_diff = ppr_diff
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats)/math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
+        nn.init.xavier_normal_(self.gated_head, gain=gain)
+        nn.init.xavier_normal_(self.gated_tail, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, feat, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               'output for those nodes will be invalid. '
+                               'This is harmful for some applications, '
+                               'causing silent performance regression. '
+                               'Adding self-loop on the input graph by '
+                               'calling `g = dgl.add_self_loop(g)` will resolve '
+                               'the issue. Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_head = in_dst = self.feat_drop(self.graph_layer_norm(feat))
+            feat_head = self.fc_head(in_head).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(in_dst).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(in_head).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++attention_computation+++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            e = (graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            graph.edata.update({'e': e / self._head_dim})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            attn_score = graph.edata.pop('e')
+            # +++++++++++++++++++++++++++++gate_computation++++++++++++++++++++++++++++
+            gh = (feat_head * self.gated_head).sum(dim=-1).unsqueeze(-1)
+            gt = (feat_tail * self.gated_tail).sum(dim=-1).unsqueeze(-1)
+            graph.srcdata.update({'gh': gh})
+            graph.dstdata.update({'gt': gt})
+            graph.apply_edges(fn.u_add_v('gh', 'gt', 'g'))
+            gate_score = torch.sigmoid(graph.edata.pop('g'))
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.ppr_diff:
+                graph.edata['a'] = weighted_edge_softmax(graph=graph, attn_scores=attn_score, gate_scores=gate_score)
+                rst = self.ppr_estimation(graph=graph)
+            else:
+                graph.edata['a'] = self.attn_drop(weighted_edge_softmax(graph=graph, attn_scores=attn_score,
+                                                                        gate_scores=gate_score))  # (num_edge, num_heads)
+                # # message passing
+                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                rst = graph.dstdata.pop('ft')
+
+            # residual
+            if self.res_fc is not None:
+                # this part uses feat (very important to prevent over-smoothing)
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
+
+            rst = rst.flatten(1)
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = self.feat_drop(ff_rst) + rst  # residual
+
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            for _ in range(self._hop_num):
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+            return feat
+
+
+    parser.add_argument('--central_emb', type=boolean_string, default='false')
+    parser.add_argument('--max_degree', type=int, default=200)
+    parser.add_argument('--degree_emb_dim', type=int, default=512)
+
+
+import torch
+import math
+import torch.nn as nn
+from dgl.nn.pytorch.utils import Identity
+import dgl.function as fn
+from dgl.nn.functional import edge_softmax
+from torch.nn import LayerNorm as layerNorm
+from dgl.base import DGLError
+from dgl.utils import expand_as_pair
+from codes.gnn_utils import PositionWiseFeedForward, small_init_gain, small_init_gain_v2
+from codes.gnn_utils import top_kp_attention, top_kp_attn_normalization
+from torch import Tensor
+
+
+class GDTLayer(nn.Module):
+    def __init__(self,
+                 in_ent_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int = 5,
+                 alpha: float = 0.1,
+                 top_k: int = 5,
+                 top_p: float = 0.75,
+                 sparse_mode: str = 'top_k',
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 edge_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 layer_num: int = 1,
+                 residual: bool = True,
+                 ppr_diff: bool = True):
+        super(GDTLayer, self).__init__()
+
+        self.sparse_mode = sparse_mode
+        self._top_k, self._top_p = top_k, top_p
+        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
+        self.layer_num = layer_num
+
+        self._hop_num = hop_num
+        self._alpha = alpha
+        self._num_heads = num_heads
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_feats = out_ent_feats
+        self._head_dim = out_ent_feats // num_heads
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.edge_drop = edge_drop
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
+        if residual:
+            if self._in_tail_feats != self._out_feats:
+                self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc', None)
+
+        self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        self.ff_layer_norm = layerNorm(self._out_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
+        self.ppr_diff = ppr_diff
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, feat, get_attention=False, perm=None):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               'output for those nodes will be invalid. '
+                               'This is harmful for some applications, '
+                               'causing silent performance regression. '
+                               'Adding self-loop on the input graph by '
+                               'calling `g = dgl.add_self_loop(g)` will resolve '
+                               'the issue. Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_feat_norm = self.graph_layer_norm(feat)
+            feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = (graph.edata.pop('e')/self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.sparse_mode != 'no_sparse':
+                a_score = edge_softmax(graph, e)
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
+                                                     sparse_mode=self.sparse_mode)
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
+                                                top_k_sum=a_top_sum)
+                if self.ppr_diff:
+                    graph.edata['a'] = a_n
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(a_n)
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
+            else:
+                # compute softmax
+                if self.ppr_diff:
+                    graph.edata['a'] = edge_softmax(graph, e)
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))  # (num_edge, num_heads)
+                    # # message passing
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
+
+            # residual
+            if self.res_fc is not None:
+                # this part uses feat (very important to prevent over-smoothing)
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
+
+            rst = rst.flatten(1)
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = self.feat_drop(ff_rst) + rst  # residual
+
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            for _ in range(self._hop_num):
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+            return feat
+
+
+class RGDTLayer(nn.Module):
+    """
+    Heterogeneous graph neural network (first layer) with different edge type
+    """
+    def __init__(self,
+                 in_ent_feats: int,
+                 in_rel_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int,
+                 top_k: int = 5,
+                 top_p: float = 0.75,
+                 sparse_mode: str = 'top_k',
+                 alpha: float = 0.1,
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 layer_num: int = 1,
+                 residual=True,
+                 ppr_diff=True):
+        super(RGDTLayer, self).__init__()
+
+        self.sparse_mode = sparse_mode
+        self._top_k, self._top_p = top_k, top_p
+        assert self.sparse_mode in {'top_k', 'top_p', 'no_sparse'}
+        self.layer_num = layer_num
+
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_ent_feats = out_ent_feats
+        self._in_rel_feats = in_rel_feats
+        self._num_heads = num_heads
+        self._hop_num = hop_num
+        self._alpha = alpha
+
+        assert self._out_ent_feats % self._num_heads == 0
+        self._head_dim = self._out_ent_feats // self._num_heads
+
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+
+        self.attn = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
+
+        if residual:
+            if in_ent_feats != out_ent_feats:
+                self.res_fc = nn.Linear(in_ent_feats, self._num_heads * self._head_dim, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc_ent', None)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
+        self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
+        self.ff_layer_norm = layerNorm(self._out_ent_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
+                                                          d_hidden=4 * self._num_heads * self._head_dim)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.ppr_diff = ppr_diff
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """
+        Description
+        -----------
+        Reinitialize learnable parameters.
+        Note
+        ----
+        The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
+        The attention weights are using xavier initialization method.
+        """
+        gain = small_init_gain_v2(d_in=self._in_ent_feats, d_out=self._out_ent_feats) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               ' Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_feat_norm = self.graph_layer_ent_norm(ent_feat)
+            feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            in_rel_norm = self.graph_layer_rel_norm(rel_feat)
+            feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
+            edge_ids = graph.edata['rid']
+            feat_rel = feat_rel[edge_ids]
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            edge_dismult = graph.edata.pop('e') * feat_rel
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            e = self.attn_activation(edge_dismult)  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = (graph.edata.pop('e')/self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.sparse_mode != 'no_sparse':
+                a_score = edge_softmax(graph, e)
+                a_mask, a_top_sum = top_kp_attention(graph=graph, attn_scores=a_score, k=self._top_k, p=self._top_p,
+                                                     sparse_mode=self.sparse_mode)
+                a_n = top_kp_attn_normalization(graph=graph, attn_scores=a_score.clone(), attn_mask=a_mask,
+                                                top_k_sum=a_top_sum)
+                if self.ppr_diff:
+                    graph.edata['a'] = a_n
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(a_n)
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata.pop('ft')
+            else:
+                if self.ppr_diff:
+                    graph.edata['a'] = edge_softmax(graph, e)
+                    rst = self.ppr_estimation(graph=graph)
+                else:
+                    graph.edata['a'] = self.attn_drop(edge_softmax(graph, e))
+                    graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                    rst = graph.dstdata['ft']
+            # residual
+            if self.res_fc is not None:
+                resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
+                rst = self.feat_drop(rst) + resval
+            rst = rst.flatten(1)
+            # +++++++++++++++++++++++++++++++++++++++
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = self.feat_drop(ff_rst) + rst  # residual
+            # +++++++++++++++++++++++++++++++++++++++
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            for _ in range(self._hop_num):
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                feat = (1.0 - self._alpha) * self.feat_drop(feat) + self._alpha * feat_0
+            return feat
+
+
+import torch
+import math
+import torch.nn as nn
+from dgl.nn.pytorch.utils import Identity
+import dgl.function as fn
+from dgl.nn.functional import edge_softmax
+from torch.nn import LayerNorm as layerNorm
+from torch.nn import BatchNorm1d as batchNorm
+from dgl.base import DGLError
+from dgl.utils import expand_as_pair
+from codes.gnn_utils import PositionWiseFeedForward, small_init_gain, small_init_gain_v2
+from torch import Tensor
+
+
+class GDTLayer(nn.Module):
+    def __init__(self,
+                 in_ent_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int = 5,
+                 alpha: float = 0.1,
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 edge_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 layer_num: int = 1,
+                 residual: bool = True,
+                 degree_norm: bool = True,
+                 ppr_diff: bool = True):
+        super(GDTLayer, self).__init__()
+
+        self.layer_num = layer_num
+        self._hop_num = hop_num
+        self._alpha = alpha
+        self._num_heads = num_heads
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_feats = out_ent_feats
+        self._head_dim = out_ent_feats // num_heads
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.attn = nn.Parameter(torch.FloatTensor(size=(1, self._num_heads, self._head_dim)), requires_grad=True)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.edge_drop = edge_drop
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)
+        if residual:
+            if self._in_tail_feats != self._out_feats:
+                self.res_fc = nn.Linear(self._in_tail_feats, self._out_feats, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc', None)
+
+        self.graph_layer_norm = layerNorm(self._in_ent_feats)
+        self.ff_layer_norm = batchNorm(self._out_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._out_feats, d_hidden=4 * self._out_feats)
+        self.ppr_diff = ppr_diff
+        self._degree_norm = degree_norm
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, feat, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               'output for those nodes will be invalid. '
+                               'This is harmful for some applications, '
+                               'causing silent performance regression. '
+                               'Adding self-loop on the input graph by '
+                               'calling `g = dgl.add_self_loop(g)` will resolve '
+                               'the issue. Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_feat_norm = self.graph_layer_norm(feat)
+            feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat_head.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
+                feat_head = feat_head * head_norm
+                feat_tail = feat_tail * head_norm
+                feat_enti = feat_enti * head_norm
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            e = self.attn_activation(graph.edata.pop('e'))  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = (graph.edata.pop('e')/self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.training and self.edge_drop > 0:
+                perm = torch.randperm(graph.number_of_edges(), device=e.device)
+                bound = int(graph.number_of_edges() * self.edge_drop)
+                eids = perm[bound:]
+                a_value = torch.zeros_like(e)
+                a_value[eids] = edge_softmax(graph, e[eids], eids=eids)
+            else:
+                a_value = edge_softmax(graph, e)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            # compute softmax
+            if self.ppr_diff:
+                graph.edata['a'] = a_value
+                rst = self.ppr_estimation(graph=graph)
+            else:
+                graph.edata['a'] = self.attn_drop(a_value)
+                # # message passing
+                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                rst = graph.dstdata.pop('ft')
+                if self._degree_norm:
+                    degs = graph.in_degrees().float().clamp(min=1)
+                    tail_norm = torch.pow(degs, 0.5)
+                    shp = tail_norm.shape + (1,) * (rst.dim() - 1)
+                    tail_norm = torch.reshape(tail_norm, shp)
+                    rst = rst * tail_norm
+            # residual
+            if self.res_fc is not None:
+                # this part uses feat (very important to prevent over-smoothing)
+                resval = self.res_fc(feat).view(feat.shape[0], -1, self._head_dim)
+                rst = rst + resval
+
+            rst = rst.flatten(1)
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = ff_rst + rst  # residual
+
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
+
+                degs = graph.in_degrees().float().clamp(min=1)
+                tail_norm = torch.pow(degs, 0.5)
+                shp = tail_norm.shape + (1,) * (feat.dim() - 1)
+                tail_norm = torch.reshape(tail_norm, shp)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++
+            for _ in range(self._hop_num):
+                if self._degree_norm and _ > 0:
+                    feat = feat * head_norm
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                if self._degree_norm:
+                    feat = feat * tail_norm
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
+            return feat
+
+
+class RGDTLayer(nn.Module):
+    """
+    Heterogeneous graph neural network (first layer) with different edge type
+    """
+    def __init__(self,
+                 in_ent_feats: int,
+                 in_rel_feats: int,
+                 out_ent_feats: int,
+                 num_heads: int,
+                 hop_num: int,
+                 alpha: float = 0.1,
+                 feat_drop: float = 0.1,
+                 attn_drop: float = 0.1,
+                 edge_drop: float = 0.1,
+                 negative_slope: float = 0.2,
+                 layer_num: int = 1,
+                 residual=True,
+                 degree_norm: bool = True,
+                 ppr_diff=True):
+        super(RGDTLayer, self).__init__()
+
+        self.layer_num = layer_num
+        self._in_ent_feats = in_ent_feats
+        self._in_head_feats, self._in_tail_feats = expand_as_pair(in_ent_feats)
+        self._out_ent_feats = out_ent_feats
+        self._in_rel_feats = in_rel_feats
+        self._num_heads = num_heads
+        self._hop_num = hop_num
+        self._alpha = alpha
+
+        assert self._out_ent_feats % self._num_heads == 0
+        self._head_dim = self._out_ent_feats // self._num_heads
+
+        self.fc_head = nn.Linear(self._in_head_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_tail = nn.Linear(self._in_tail_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_ent = nn.Linear(self._in_ent_feats, self._head_dim * self._num_heads, bias=False)
+        self.fc_rel = nn.Linear(self._in_rel_feats, self._head_dim * self._num_heads, bias=False)
+
+        self.feat_drop = nn.Dropout(feat_drop)
+        self.attn_drop = nn.Dropout(attn_drop)
+        self.edge_drop = edge_drop
+
+        self.attn = nn.Parameter(torch.FloatTensor(1, self._num_heads, self._head_dim), requires_grad=True)
+        self.attn_activation = nn.LeakyReLU(negative_slope=negative_slope)  # for attention computation
+
+        if residual:
+            if in_ent_feats != out_ent_feats:
+                self.res_fc = nn.Linear(in_ent_feats, self._num_heads * self._head_dim, bias=False)
+            else:
+                self.res_fc = Identity()
+        else:
+            self.register_buffer('res_fc_ent', None)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.graph_layer_ent_norm = layerNorm(self._in_ent_feats)
+        self.graph_layer_rel_norm = layerNorm(self._in_rel_feats)
+        self.ff_layer_norm = batchNorm(self._out_ent_feats)
+        self.feed_forward_layer = PositionWiseFeedForward(model_dim=self._num_heads * self._head_dim,
+                                                          d_hidden=4 * self._num_heads * self._head_dim)
+        # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+        self.ppr_diff = ppr_diff
+        self._degree_norm = degree_norm
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """
+        Description
+        -----------
+        Reinitialize learnable parameters.
+        Note
+        ----
+        The fc weights :math:`W^{(l)}` are initialized using Glorot uniform initialization.
+        The attention weights are using xavier initialization method.
+        """
+        gain = small_init_gain(d_in=self._in_ent_feats, d_out=self._out_feats) / math.sqrt(self.layer_num)
+        nn.init.xavier_normal_(self.fc_head.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_tail.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_ent.weight, gain=gain)
+        nn.init.xavier_normal_(self.fc_rel.weight, gain=gain)
+        nn.init.xavier_normal_(self.attn, gain=gain)
+        if isinstance(self.res_fc, nn.Linear):
+            nn.init.xavier_normal_(self.res_fc.weight, gain=gain)
+
+    def forward(self, graph, ent_feat: Tensor, rel_feat: Tensor, get_attention=False):
+        with graph.local_scope():
+            if (graph.in_degrees() == 0).any():
+                raise DGLError('There are 0-in-degree nodes in the graph, '
+                               ' Setting ``allow_zero_in_degree`` '
+                               'to be `True` when constructing this module will '
+                               'suppress the check and let the code run.')
+            in_feat_norm = self.graph_layer_ent_norm(ent_feat)
+            feat_head = self.fc_head(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_tail = self.fc_tail(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            feat_enti = self.fc_ent(self.feat_drop(in_feat_norm)).view(-1, self._num_heads, self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat_head.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
+                feat_head = feat_head * head_norm
+                feat_tail = feat_tail * head_norm
+                feat_enti = feat_enti * head_norm
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.srcdata.update({'eh': feat_head, 'ft': feat_enti})  # (num_src_edge, num_heads, head_dim)
+            graph.dstdata.update({'et': feat_tail})
+            graph.apply_edges(fn.u_mul_v('eh', 'et', 'e'))
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            in_rel_norm = self.graph_layer_rel_norm(rel_feat)
+            feat_rel = self.fc_rel(self.feat_drop(in_rel_norm)).view(-1, self._num_heads, self._head_dim)
+            edge_ids = graph.edata['rid']
+            feat_rel = feat_rel[edge_ids]
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            edge_dismult = graph.edata.pop('e') * feat_rel
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            e = self.attn_activation(edge_dismult)  # (num_src_edge, num_heads, head_dim)
+            e = (e * self.attn).sum(dim=-1).unsqueeze(dim=2)  # (num_edge, num_heads, 1)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            graph.edata.update({'e': e})
+            graph.apply_edges(fn.e_mul_v('e', 'log_in', 'e'))
+            e = (graph.edata.pop('e')/self._head_dim)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.training and self.edge_drop > 0:
+                perm = torch.randperm(graph.number_of_edges(), device=e.device)
+                bound = int(graph.number_of_edges() * self.edge_drop)
+                eids = perm[bound:]
+                a_value = torch.zeros_like(e)
+                a_value[eids] = edge_softmax(graph, e[eids], eids=eids)
+            else:
+                a_value = edge_softmax(graph, e)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self.ppr_diff:
+                graph.edata['a'] = a_value
+                rst = self.ppr_estimation(graph=graph)
+            else:
+                graph.edata['a'] = self.attn_drop(a_value)
+                graph.update_all(fn.u_mul_e('ft', 'a', 'm'), fn.sum('m', 'ft'))
+                rst = graph.dstdata['ft']
+                if self._degree_norm:
+                    degs = graph.in_degrees().float().clamp(min=1)
+                    tail_norm = torch.pow(degs, 0.5)
+                    shp = tail_norm.shape + (1,) * (rst.dim() - 1)
+                    tail_norm = torch.reshape(tail_norm, shp)
+                    rst = rst * tail_norm
+            # residual
+            if self.res_fc is not None:
+                resval = self.res_fc(ent_feat).view(ent_feat.shape[0], -1, self._head_dim)
+                rst = rst + resval
+
+            rst = rst.flatten(1)
+            # +++++++++++++++++++++++++++++++++++++++
+            ff_rst = self.feed_forward_layer(self.feat_drop(self.ff_layer_norm(rst)))
+            rst = ff_rst + rst  # residual
+            # +++++++++++++++++++++++++++++++++++++++
+            if get_attention:
+                return rst, graph.edata['a']
+            else:
+                return rst
+
+    def ppr_estimation(self, graph):
+        with graph.local_scope():
+            graph = graph.local_var()
+            feat_0 = graph.srcdata.pop('ft')
+            feat = feat_0.clone()
+            attentions = graph.edata.pop('a')
+            #+++++++++++++++++++++++++++++++++++++++++++++++++++
+            if self._degree_norm:
+                degs = graph.out_degrees().float().clamp(min=1)
+                head_norm = torch.pow(degs, -0.5)
+                shp = head_norm.shape + (1,) * (feat.dim() - 1)
+                head_norm = torch.reshape(head_norm, shp)
+
+                degs = graph.in_degrees().float().clamp(min=1)
+                tail_norm = torch.pow(degs, 0.5)
+                shp = tail_norm.shape + (1,) * (feat.dim() - 1)
+                tail_norm = torch.reshape(tail_norm, shp)
+            # +++++++++++++++++++++++++++++++++++++++++++++++++++
+            for _ in range(self._hop_num):
+                if self._degree_norm and _ > 0:
+                    feat = feat * head_norm
+                graph.srcdata['h'] = self.feat_drop(feat)
+                graph.edata['a_temp'] = self.attn_drop(attentions)
+                graph.update_all(fn.u_mul_e('h', 'a_temp', 'm'), fn.sum('m', 'h'))
+                feat = graph.dstdata.pop('h')
+                if self._degree_norm:
+                    feat = feat * tail_norm
+                feat = (1.0 - self._alpha) * feat + self._alpha * feat_0
+            return feat
+
+
+import numpy as np
+import time
+import torch
+from codes.gdt_encoder import RGDTEncoder
+from codes.gdt_v2_encoder import RGDTEncoder as RGDTEncoderV2
+from torch.optim import Adam
+from codes.default_argparser import default_parser, complete_default_parser
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
+from transformers.optimization import get_cosine_schedule_with_warmup
+import logging
+from codes.utils import seed_everything
+from codes.utils import citation_hyper_parameter_space, citation_random_search_hyper_tunner
+
+logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message)s',
+                    datefmt='%m/%d/%Y %H:%M:%S',
+                    level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
+def accuracy(logits, labels, debug=False):
+    _, indices = torch.max(logits, dim=1)
+    correct = torch.sum(indices == labels)
+    if debug:
+        return correct.item() * 1.0 / len(labels), indices, labels
+    return correct.item() * 1.0 / len(labels)
+
+
+def evaluate(graph, model, labels, mask, debug=False, loss=False):
+    model.eval()
+    loss_fcn = torch.nn.CrossEntropyLoss()
+    with torch.no_grad():
+        logits = model(graph)
+        logits = logits[mask]
+        labels = labels[mask]
+        if loss:
+            valid_loss = loss_fcn(logits, labels)
+            return accuracy(logits, labels, debug=debug), valid_loss
+        return accuracy(logits, labels, debug=debug)
+
+
+def model_train(g, model, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
+    dur = []
+    best_val_acc = 0.0
+    best_val_loss = 1e10
+    best_test_acc = 0.0
+    t0 = time.time()
+    train_mask_backup = train_mask.clone()
+    patience_count = 0
+    n_edges = g.number_of_edges()
+    loss_fcn = torch.nn.CrossEntropyLoss()
+    torch.autograd.set_detect_anomaly(True)
+    for epoch in range(args.num_train_epochs):
+        model.train()
+        if epoch >= 3:
+            t0 = time.time()
+        # forward
+        logits = model(g)
+        # train_mask = label_mask_drop(train_mask=train_mask_backup, drop_ratio=0.25)
+        loss = loss_fcn(logits[train_mask], labels[train_mask])
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+        optimizer.step()
+        scheduler.step()
+
+        if epoch >= 3:
+            dur.append(time.time() - t0)
+
+        train_acc = accuracy(logits[train_mask], labels[train_mask])
+
+        if args.fastmode:
+            val_acc = accuracy(logits[val_mask], labels[val_mask])
+            if args.model_selection_mode == 'loss':
+                val_loss = loss_fcn(logits[val_mask], labels[val_mask])
+            test_acc = accuracy(logits[test_mask], labels[test_mask])
+        else:
+            if args.model_selection_mode == 'loss':
+                val_acc, val_loss = evaluate(g, model, labels, val_mask, debug=False, loss=True)
+            else:
+                val_acc = evaluate(g, model, labels, val_mask, debug=False, loss=False)
+            test_acc = evaluate(g, model, labels, test_mask)
+
+        if args.model_selection_mode == 'accuracy':
+            if best_val_acc <= val_acc:
+                best_val_acc = val_acc
+                best_test_acc = test_acc
+                patience_count = 0
+            else:
+                patience_count = patience_count + 1
+                if patience_count >= args.patience:
+                    break
+        else:
+            if best_val_loss > val_loss:
+                best_val_loss = val_loss
+                best_val_acc = val_acc
+                best_test_acc = test_acc
+                patience_count = 0
+            else:
+                patience_count = patience_count + 1
+                if patience_count >= args.patience:
+                    break
+
+        logger.info("Epoch {:04d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
+                    " ValAcc {:.4f} | B/ValAcc {:.4f} | B/TestAcc {:.4f} | ETputs (KTEPS) {:.2f}".
+                    format(epoch, np.mean(dur), loss.item(), train_acc,
+                           val_acc, best_val_acc, best_test_acc, n_edges / np.mean(dur) / 1000))
+
+    logger.info('\n')
+    test_acc, test_predictions, test_true_labels = evaluate(g, model, labels, test_mask, debug=True)
+    logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc,
+                                                                                                 best_val_acc,
+                                                                                                 best_test_acc))
+    return test_acc, best_val_acc, best_test_acc
+
+
+def main(args):
+    args = complete_default_parser(args=args)
+    g, number_of_nodes, n_relations, n_classes, _, _, special_relation_dict = \
+        citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5, rand_split=False)
+    logger.info("Number of relations = {}".format(n_relations))
+    args.num_classes = n_classes
+    args.num_entities = number_of_nodes
+    args.num_relations = n_relations
+    args.node_emb_dim = g.ndata['feat'].shape[1]
+    args.rel_emb_dim = g.ndata['feat'].shape[1]
+    g = g.int().to(args.device)
+    features = g.ndata['feat']
+    labels = g.ndata['label']
+    train_mask = g.ndata['train_mask']
+    val_mask = g.ndata['val_mask']
+    test_mask = g.ndata['test_mask']
+    n_edges = g.number_of_edges()
+    logger.info("""----Data statistics------'
+      #Edges %d
+      #Classes %d
+      #Train samples %d
+      #Val samples %d
+      #Test samples %d""" %
+          (n_edges, n_classes,
+           train_mask.int().sum().item(),
+           val_mask.int().sum().item(),
+           test_mask.int().sum().item()))
+
+    num_of_experiments = args.exp_number
+    hyper_search_space = citation_hyper_parameter_space()
+    acc_list = []
+    search_best_test_acc = 0.0
+    search_best_val_acc = 0.0
+    search_best_settings = None
+    for _ in range(num_of_experiments):
+        args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
+                                                                    seed=args.seed + 1)
+        logging.info('Model Hyper-Parameter Configuration:')
+        for key, value in vars(args).items():
+            logging.info('Hyper-Para {}: {}'.format(key, value))
+        logging.info('*' * 75)
+        # create model
+        seed_everything(seed=args.seed)
+        if args.encoder_v2:
+            model = RGDTEncoderV2(config=args)
+        else:
+            model = RGDTEncoder(config=args)
+        model.to(args.device)
+        model.init_graph_ember(ent_emb=features, ent_freeze=True)
+        # ++++++++++++++++++++++++++++++++++++
+        logging.info('Model Parameter Configuration:')
+        for name, param in model.named_parameters():
+            logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
+                                                                      str(param.requires_grad)))
+        logging.info('*' * 75)
+        # ++++++++++++++++++++++++++++++++++++
+        optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
+                                                    num_training_steps=args.num_train_epochs)
+
+        test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
+                                                            val_mask=val_mask, test_mask=test_mask,
+                                                            labels=labels,
+                                                            optimizer=optimizer, scheduler=scheduler,
+                                                            args=args)
+        acc_list.append((hyper_setting_i, test_acc, best_val_acc, best_test_acc))
+        logger.info('*' * 50)
+        logger.info('{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(hyper_setting_i, test_acc, best_val_acc, best_test_acc))
+        logger.info('*' * 50)
+        if search_best_val_acc < best_val_acc:
+            search_best_val_acc = best_val_acc
+            search_best_test_acc = best_test_acc
+            search_best_settings = hyper_setting_i
+        logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
+                                                                                     search_best_val_acc))
+        logger.info('*' * 30)
+    for _, setting_acc in enumerate(acc_list):
+        print(_, setting_acc)
+    print(search_best_test_acc)
+    print(search_best_settings)
+
+
+if __name__ == '__main__':
+    main(default_parser().parse_args())
+
+
+
+def k_hop_graph_edge_collection(graph: DGLHeteroGraph, hop_num: int = 5):
+    k_hop_graph_edge_dict = {}
+    copy_graph = copy.deepcopy(graph)
+    copy_graph = dgl.remove_self_loop(g=copy_graph)
+    one_hop_head_nodes, one_hop_tail_nodes = copy_graph.edges()
+    k_hop_graph_edge_dict['1_hop'] = (one_hop_head_nodes, one_hop_tail_nodes)
+    for k in range(2, hop_num + 1):
+        k_hop_graph = dgl.khop_graph(copy_graph, k=k)
+        if k_hop_graph.number_of_edges() > 0:
+            head_nodes, tail_nodes = k_hop_graph.edges()
+            k_hop_graph_edge_dict['{}_hop'.format(k)] = (head_nodes, tail_nodes)
+        else:
+            break
+    return k_hop_graph_edge_dict
+
+
+def graph_multiview_augmentation(subgraph, hop_num: int, edge_dir: str, special_entity_dict: dict,
+                                 special_relation_dict: dict):
+    """
+    sub-graph + adding multi-hop edges (without anchor node)
+    :param subgraph:
+    :param hop_num:
+    :param edge_dir:
+    :param special_entity_dict:
+    :param special_relation_dict:
+    :return:
+    """
+    assert edge_dir in {'in', 'out'}
+    view_num = random.randint(1, hop_num + 1)
+    samp_hop_nums = random.choice(np.arange(2, hop_num + 1), size=view_num, replace=False)
+    hop_relations = [(_, '{}_hop_{}_r'.format(edge_dir, _)) for _ in samp_hop_nums if '{}_hop_{}_r'.format(edge_dir, _)
+                     in special_relation_dict]
+    assert len(hop_relations) > 0
+    aug_sub_graph = copy.deepcopy(subgraph)
+    for idx, (hop_num, hop_relation) in enumerate(hop_relations):
+        hop_graph = dgl.khop_graph(g=subgraph, k=hop_num)
+        src_nodes, dst_nodes = hop_graph.edges()
+        relation_tid_i = torch.LongTensor(src_nodes.shape).fill_(special_relation_dict[hop_relation]).to(
+            subgraph.device)
+        aug_sub_graph.add_edges(src_nodes, dst_nodes, {'rid': relation_tid_i})
+
+    cls_parent_node_id = special_entity_dict['cls'][0][0].data.item()
+    aug_sub_graph, _ = cls_node_addition_to_graph(subgraph=aug_sub_graph, cls_parent_node_id=cls_parent_node_id,
+                                                  special_relation_dict=special_relation_dict)
+    return aug_sub_graph
