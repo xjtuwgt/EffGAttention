@@ -258,7 +258,8 @@ datahelper = self_supervised_node_data_helper(config=args)
 ssl_train_data = datahelper.data_loader()
 start_time = time()
 for batch_idx, batch in enumerate(ssl_train_data):
-    print(batch_idx)
+    if batch_idx % 200 == 0:
+        print(batch_idx)
 print('Runtime = {}'.format(time() - start_time))
 # datahelper = node_classification_data_helper(config=args)
 # args.num_classes = datahelper.num_class
