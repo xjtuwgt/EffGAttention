@@ -2,7 +2,7 @@ from ogb.nodeproppred import DglNodePropPredDataset
 from evens import HOME_DATA_FOLDER as ogb_root
 import torch
 from codes.graph_utils import OON_Initialization
-from codes.graph_utils import construct_special_graph_dictionary
+from codes.graph_utils import special_graph_dictionary_construction
 from codes.graph_utils import add_relation_ids_to_graph
 from codes.utils import IGNORE_IDX
 
@@ -58,7 +58,7 @@ def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5, OON='zero'):
     graph, node_split_idx, node_features, n_entities, n_relations, n_classes, n_feats = \
         ogb_nodeprop_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
-    special_relation_dict = construct_special_graph_dictionary(graph=graph, n_relations=n_relations, hop_num=hop_num)
+    special_relation_dict = special_graph_dictionary_construction(graph=graph, n_relations=n_relations, hop_num=hop_num)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata['label'][-2:] = -IGNORE_IDX
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

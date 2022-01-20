@@ -4,7 +4,7 @@ import copy
 from dgl import DGLHeteroGraph
 import dgl
 from codes.graph_utils import OON_Initialization
-from codes.graph_utils import construct_special_graph_dictionary, add_relation_ids_to_graph, add_self_loop_in_graph
+from codes.graph_utils import special_graph_dictionary_construction, add_relation_ids_to_graph, add_self_loop_to_graph
 import numpy as np
 from codes.utils import IGNORE_IDX
 
@@ -26,7 +26,7 @@ def citation_graph_reconstruction(dataset: str):
     number_of_edges = graph.number_of_edges()
     edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
     graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
-    graph = add_self_loop_in_graph(graph=graph, self_loop_r=1)
+    graph = add_self_loop_to_graph(graph=graph, self_loop_r=1)
     n_entities = graph.number_of_nodes()
     n_relations = 2
     in_degrees = graph.in_degrees()
@@ -92,8 +92,8 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
         graph, n_entities, n_relations, n_classes, n_feats = \
             citation_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
-    special_relation_dict = construct_special_graph_dictionary(graph=graph, n_relations=n_relations,
-                                                               hop_num=hop_num, bidirected=bidirected)
+    special_relation_dict = special_graph_dictionary_construction(graph=graph, n_relations=n_relations,
+                                                                  hop_num=hop_num, bidirected=bidirected)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata['label'][-2:] = -IGNORE_IDX
     graph.ndata['val_mask'][-2:] = False
