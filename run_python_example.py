@@ -1,3 +1,4 @@
+from time import time
 # from torch.nn.modules.instancenorm import _InstanceNorm
 # import torch.nn.functional as F
 # from torch import Tensor
@@ -77,10 +78,95 @@
 # from codes.graph_utils import construct_special_graph_dictionary, anchor_node_sub_graph_extractor
 #
 #
-# import dgl
-# edges = torch.tensor([0, 1, 2, 1, 2, 0, 2, 3, 3, 4, 5, 4, 5, 3]), \
-#         torch.tensor([1, 2, 0, 0, 1, 2, 3, 2, 4, 5, 3, 3, 4, 5])  # 边：2->3, 5->5, 3->0
-# g = dgl.graph(edges)
+import torch
+import dgl
+from codes.fast_ppr import pagerank, pagerank_power
+import math
+restart_prob = 0.85
+edges = torch.tensor([0, 1, 2, 1, 2, 0, 2, 3, 3, 4, 5, 4, 5, 3]), \
+        torch.tensor([1, 2, 0, 0, 1, 2, 3, 2, 4, 5, 3, 3, 4, 5])  # 边：2->3, 5->5, 3->0
+g = dgl.graph(edges)
+g.ndata['n_id'] = torch.arange(0, 6)
+
+g1 = dgl.edge_subgraph(graph=g, edges=[0, 2, 4])
+
+# print(g1.ndata['n_id'])
+#
+# g1 = dgl.edge_subgraph(graph=g, edges=[0, 4, 2])
+#
+# print(g1.ndata['n_id'])
+#
+# g1 = dgl.edge_subgraph(graph=g, edges=[4, 0, 2])
+#
+# print(g1.ndata['n_id'])
+#
+# edge_set = [4, 0, 4, 6, 2]
+# y = sorted(set(edge_set), key=edge_set.index)
+#
+# print(y)
+# y = g.adj(scipy_fmt='coo')
+#
+# # z = pagerank(A=y)
+# # print(z)
+#
+# z1 = pagerank_power(A=y)
+# print(z1)
+
+# print(y)
+#
+# g1 = dgl.from_scipy(y)
+# print(g1)
+
+
+# max_nodes_for_seed = max(64,
+#                          int((g.out_degree(1) * math.e / (math.e - 1) / restart_prob) + 0.5))
+#
+# for _ in range(1):
+#     trace, types = dgl.sampling.random_walk(g=g, nodes=[0] * (max_nodes_for_seed * 5), length=5,
+#                                             restart_prob=restart_prob)
+#     print(trace.shape)
+#     print(trace)
+#     x = (trace >= 0).sum(dim=1) > 1
+#     print(sum(x))
+#     y = trace[x]
+#     print(y.shape)
+#     print(y)
+    # trace = trace[trace >=0]
+    # print(trace)
+    # rwr_hop_dict = {}
+    # for hop in range(2, trace.shape[1]):
+    #     trace_i = trace[:,hop]
+    #     trace_i = trace_i[trace_i >= 0]
+    #     neighbors_i = torch.unique(trace_i).tolist()
+    #     rwr_hop_dict[hop] = neighbors_i
+    #
+    #     # print(torch.unique(trace_i).tolist())
+    # print(rwr_hop_dict)
+    # print(trace.shape)
+    # # trace_i =
+    # trace = trace[trace >=0]
+    # subv = torch.unique(trace).tolist()
+    # print(subv)
+    # trace = trace[trace >= 0]
+    # # print(types.shape)
+    # print(trace.shape)
+    # subv = torch.unique(trace).tolist()
+    # print(subv)
+    # print(trace.shape)
+    # print(trace[trace >=0].shape)
+
+
+# print(max_nodes_for_seed)
+#
+# # print(x[0])
+#
+# y = int((34 * math.e / (math.e - 1) / restart_prob) + 0.5)
+# print(y)
+#
+# print(x)
+
+# dgl.contrib.sampling.random_walk_with_restart()
+
 # print(g.number_of_nodes())
 # g.ndata['nid'] = torch.arange(0, g.number_of_nodes(), dtype=torch.long)
 # g.edata['rid'] = torch.zeros(g.number_of_edges(), dtype=torch.long)
@@ -159,19 +245,46 @@
 # #     MLP Layer used after graph vector representation
 
 from codes.default_argparser import default_parser
-from graph_data.graph_dataloader import node_classification_data_helper
+from graph_data.graph_dataloader import node_classification_data_helper, self_supervised_node_data_helper
+from codes.utils import seed_everything
+from codes.simsiam_networks import SimSiam_Model_Builder, SimSiam_NodeClassification
 
 args = default_parser().parse_args()
-datahelper = node_classification_data_helper(config=args)
 
-train_data = datahelper.data_loader(data_type='train')
+seed_everything(seed=args.seed)
 
-for batch_idx, batch in enumerate(train_data):
+datahelper = self_supervised_node_data_helper(config=args)
+ssl_train_data = datahelper.data_loader()
+start_time = time()
+for batch_idx, batch in enumerate(ssl_train_data):
     print(batch_idx)
-    batch_graph = batch['batch_graph']
-    print(batch_graph[0].ndata['nid'])
-    cls_idx = batch_graph[1]
-    print(batch_graph[0].ndata['nid'][cls_idx])
-    print(batch_graph[2])
+print('Runtime = {}'.format(time() - start_time))
+# datahelper = node_classification_data_helper(config=args)
+# args.num_classes = datahelper.num_class
+# args.node_emb_dim = datahelper.n_feats
+# node_features = datahelper.graph.ndata.pop('feat')
+# print(node_features.shape)
+#
+# print(datahelper.graph.device)
+#
+# train_data = datahelper.data_loader(data_type='train')
 
+# simsiam_classifier = SimSiam_NodeClassification(config=args)
+# print(simsiam_classifier)
 
+# simsiam_model = SimSiam_Model_Builder(config=args)
+# simsiam_model.graph_encoder.init_graph_ember(ent_emb=node_features, ent_freeze=True)
+# #
+# print(simsiam_model)
+# start_time = time()
+#
+# for batch_idx, batch in enumerate(train_data):
+#     print(batch_idx)
+#     # batch_graph = batch['batch_graph']
+#     # print(batch_graph[0].ndata['nid'])
+#     # cls_idx = batch_graph[1]
+#     # print(batch_graph[0].ndata['nid'][cls_idx])
+#     # print(batch_graph[2])
+#     # simsiam_model.encode(batch_graph)
+#
+# print('runtime = {}'.format(time() - start_time))
