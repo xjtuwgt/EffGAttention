@@ -245,7 +245,7 @@ g1 = dgl.edge_subgraph(graph=g, edges=[0, 2, 4])
 # #     MLP Layer used after graph vector representation
 
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.graph_dataloader import node_classification_data_helper, self_supervised_node_data_helper
+from graph_data.graph_dataloader import NodeClassificationDataHelper, SelfSupervisedNodeDataHelper
 from codes.utils import seed_everything
 from codes.simsiam_networks import SimSiam_Model_Builder, SimSiam_NodeClassification
 
@@ -254,8 +254,8 @@ args = complete_default_parser(args=args)
 
 seed_everything(seed=args.seed)
 
-datahelper = self_supervised_node_data_helper(config=args)
-ssl_train_data = datahelper.data_loader()
+dataHelper = SelfSupervisedNodeDataHelper(config=args)
+ssl_train_data = dataHelper.data_loader()
 start_time = time()
 for batch_idx, batch in enumerate(ssl_train_data):
     if batch_idx % 200 == 0:
