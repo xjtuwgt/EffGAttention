@@ -44,6 +44,8 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         nentities, nrelations = graph.number_of_nodes(), 2
     else:
         raise 'Dataset {} is not supported'.format(dataset)
+    print('Number of nodes = {}'.format(graph.number_of_nodes()))
+    print('Number of edges = {}'.format(graph.number_of_edges()))
     return graph, node_split_idx, node_features, nentities, nrelations, n_classes, n_feats
 
 
