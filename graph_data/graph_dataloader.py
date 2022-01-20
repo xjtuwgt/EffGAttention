@@ -57,7 +57,7 @@ class SubGraphPairDataset(Dataset):
                                             restart_prob=self.restart_prob,
                                             samp_type=sample_type,
                                             cls=self.cls,
-                                            debug=False)
+                                            debug=True)
         sub_anchor_id = parent2sub_dict[node_idx.data.item()]
         aug_samp_type = random.choice(self.sample_types, size=1)
         aug_subgraph = copy.deepcopy(subgraph)
