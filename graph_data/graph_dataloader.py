@@ -99,6 +99,7 @@ class self_supervised_node_data_helper(object):
                                                                                    hop_num=self.config.sub_graph_hop_num)
             self.node_split_idx = node_split_idx
         graph = dgl.remove_self_loop(g=graph)
+        graph = graph.int().to(self.config.device)
         self.graph = graph
         self.number_of_nodes = number_of_nodes
         self.number_of_relations = number_of_relations
