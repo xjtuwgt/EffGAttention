@@ -102,6 +102,7 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     number_of_added_nodes = graph.number_of_nodes() - n_entities
     print('Added number of nodes = {}'.format(number_of_added_nodes))
+    print('*' * 50)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     if number_of_added_nodes > 0:
         node_features = graph.ndata['feat']
