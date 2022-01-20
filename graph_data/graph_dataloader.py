@@ -28,7 +28,7 @@ class SubGraphPairDataset(Dataset):
         self.self_loop = self_loop
         self.special_entity2id, self.special_relation2id = special_entity2id, special_relation2id
         self.restart_prob = restart_prob
-        self.sample_types = ['rwr']
+        self.sample_types = ['ns', 'rwr']
         if self.g.ndata['nid'][-1] == special_entity2id['cls']:
             self.len = self.g.number_of_nodes() - 1
         else:
@@ -44,7 +44,7 @@ class SubGraphPairDataset(Dataset):
         samp_hop_num = random.randint(2, self.hop_num + 1)  # sample sub-graph from 2-hop to k-hop (k >= 2)
         samp_fanouts = self.fanouts[:samp_hop_num]
         cls_node_ids = torch.LongTensor([self.special_entity2id['cls']])
-        samp_type = random.choice(self.sample_types, size=1)
+        sample_type = random.choice(self.sample_types, size=1)
         subgraph, parent2sub_dict, _ = \
             anchor_node_sub_graph_extractor(graph=self.g,
                                             anchor_node_ids=anchor_node_ids,
@@ -55,8 +55,9 @@ class SubGraphPairDataset(Dataset):
                                             self_loop=self.self_loop,
                                             bi_directed=self.bi_directed,
                                             restart_prob=self.restart_prob,
-                                            samp_type=samp_type,
-                                            cls=self.cls)
+                                            samp_type=sample_type,
+                                            cls=self.cls,
+                                            debug=False)
         sub_anchor_id = parent2sub_dict[node_idx.data.item()]
         aug_samp_type = random.choice(self.sample_types, size=1)
         aug_subgraph = copy.deepcopy(subgraph)

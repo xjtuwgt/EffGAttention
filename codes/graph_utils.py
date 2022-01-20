@@ -107,7 +107,7 @@ def sub_graph_neighbor_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cl
                 node_pos_label_dict[neighbor] = hop + 1
     end_time = time() if debug else 0
     if debug:
-        print('Sampling time = {:.4f} seconds'.format(end_time - start_time))
+        print('Neighbor Sampling time = {:.4f} seconds'.format(end_time - start_time))
     return neighbors_dict, node_pos_label_dict, edge_dict
 
 
@@ -176,7 +176,7 @@ def sub_graph_rwr_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cls_nod
     ##############################################################################################
     end_time = time() if debug else 0
     if debug:
-        print('Sampling time = {:.4f} seconds'.format(end_time - start_time))
+        print('RWR Sampling time = {:.4f} seconds'.format(end_time - start_time))
     return neighbors_dict, node_pos_label_dict, edge_dict
 
 
