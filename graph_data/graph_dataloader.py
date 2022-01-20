@@ -16,14 +16,14 @@ class NodeClassificationSubGraphDataset(Dataset):
     Graph representation learning with node labels
     """
 
-    def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
+    def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, hop_num: int,
                  special_entity2id: dict, special_relation2id: dict, data_type: str, graph_type: str,
                  bi_directed: bool = True, self_loop: bool = False, edge_dir: str = 'in',
                  node_split_idx: dict = None, cls: bool = True):
-        assert len(fanouts) > 0 and (data_type in {'train', 'valid', 'test'})
+        assert hop_num > 0 and (data_type in {'train', 'valid', 'test'})
         assert graph_type in {'citation', 'ogb'}
-        self.fanouts = fanouts  # list of int == number of hops for sampling
-        self.hop_num = len(fanouts)
+        self.hop_num = hop_num
+        self.fanouts = [-1] * self.hop_num  # -1 is for node classification task, no neighbor is dropped
         assert self.hop_num >= 2
         self.g = graph
         self.cls = cls
@@ -88,14 +88,14 @@ class NodeClassificationSubGraphAugmentationDataset(Dataset):
     """
     Graph representation learning with node labels with data augmentation
     """
-    def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
+    def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, hop_num: int,
                  special_entity2id: dict, special_relation2id: dict, data_type: str, graph_type: str,
                  bi_directed: bool = True, self_loop: bool = False, edge_dir: str = 'in',
                  node_split_idx: dict = None, cls: bool = True):
-        assert len(fanouts) > 0 and (data_type in {'train', 'valid', 'test'})
+        assert hop_num > 0 and (data_type in {'train', 'valid', 'test'})
         assert graph_type in {'citation', 'ogb'}
-        self.fanouts = fanouts  # list of int == number of hops for sampling
-        self.hop_num = len(fanouts)
+        self.hop_num = hop_num
+        self.fanouts = [-1] * self.hop_num # -1 is for node classification task, no neighbor is dropped
         assert self.hop_num >= 2
         self.g = graph
         self.cls = cls
@@ -193,7 +193,7 @@ class node_classification_data_helper(object):
                                                     special_relation2id=self.special_relation_dict,
                                                     data_type=data_type, graph_type=self.graph_type,
                                                     edge_dir=self.edge_dir, self_loop=self.self_loop,
-                                                    fanouts=self.fanouts, node_split_idx=self.node_split_idx)
+                                                    hop_num=len(self.fanouts), node_split_idx=self.node_split_idx)
         if data_type in {'train'}:
             batch_size = self.train_batch_size
             shuffle = True

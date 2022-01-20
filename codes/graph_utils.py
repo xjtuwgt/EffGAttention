@@ -60,7 +60,7 @@ def add_self_loop_to_graph(graph, self_loop_r: int):
 
 
 """
-Node anchor based sub-graph sample
+Node anchor based sub-graph sample (neighbor-hood sampling)
 """
 
 
@@ -109,6 +109,11 @@ def sub_graph_neighbor_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cl
     if debug:
         print('Sampling time = {:.4f} seconds'.format(end_time - start_time))
     return neighbors_dict, node_pos_label_dict, edge_dict
+
+
+"""
+Node anchor based sub-graph sample (random walk with restart)
+"""
 
 
 def sub_graph_rwr_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cls_node_ids: Tensor, fanouts: list,
@@ -183,13 +188,16 @@ def sub_graph_construction(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dic
     """
     if len(edge_dict) == 0:
         assert 'anchor' in neighbors_dict
-        return single_node_sub_graph_extraction(graph=graph, neighbors_dict=neighbors_dict)
-    edge_ids = list(edge_dict.keys())
+        anchor_ids = neighbors_dict['anchor'][0]
+        sub_graph = dgl.node_subgraph(graph=graph, nodes=anchor_ids)
+        return sub_graph
+
+    edge_ids = list(edge_dict.keys())  # sampling edge ids
     if bi_directed:
-        parent_triples = np.array(list(edge_dict.values()))
-        rev_edge_ids = graph.edge_ids(parent_triples[:, 2], parent_triples[:, 0]).tolist()
+        edge_triples = np.array(list(edge_dict.values()))
+        rev_edge_ids = graph.edge_ids(edge_triples[:, 2], edge_triples[:, 0]).tolist()
         rev_edge_ids = [_ for _ in rev_edge_ids if _ not in edge_dict]  # adding new edges as graph is bi_directed
-        rev_edge_ids = sorted(set(rev_edge_ids), key=rev_edge_ids.index)
+        rev_edge_ids = sorted(set(rev_edge_ids), key=rev_edge_ids.index)  # keep the original edge orders
     else:
         rev_edge_ids = []
     edge_ids = edge_ids + rev_edge_ids
@@ -198,17 +206,6 @@ def sub_graph_construction(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dic
 
 
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-def single_node_sub_graph_extraction(graph, neighbors_dict: dict):
-    """
-    :param graph:
-    :param neighbors_dict: int --> (anchor_ids, anchor_counts)
-    :return:
-    """
-    anchor_ids = neighbors_dict['anchor'][0]
-    sub_graph = dgl.node_subgraph(graph=graph, nodes=anchor_ids)
-    return sub_graph
 
 
 def OON_Initialization(oon_num: int, num_feats: int, oon: str):
@@ -233,7 +230,7 @@ def cls_node_addition_to_graph(subgraph, cls_parent_node_id: int, special_relati
     :param special_relation_dict: {cls_r: cls_r index}
     :return: sub_graph added cls_node (for graph level representation learning
     """
-    assert 'cls_r' in special_relation_dict
+    assert 'cls_r' in special_relation_dict and subgraph.ndata['nid'][-1] != cls_parent_node_id
     subgraph.add_nodes(1)  # the last node is the cls_node
     subgraph.ndata['nid'][-1] = cls_parent_node_id  # set the nid (parent node id) in sub-graph
     parent_node_ids, sub_node_ids = subgraph.ndata['nid'].tolist(), subgraph.nodes().tolist()
@@ -261,13 +258,16 @@ def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids
                                                                                debug=debug)
     subgraph = sub_graph_construction(graph=graph, edge_dict=edge_dict, bi_directed=bi_directed,
                                       neighbors_dict=neighbors_dict)
-    parent_node_ids, sub_node_ids = subgraph.ndata['nid'].tolist(), subgraph.nodes().tolist()
-    parent2sub_dict = dict(zip(parent_node_ids, sub_node_ids))
+
     if cls:
         cls_parent_node_id = neighbors_dict['cls'][0][0].data.item()
         subgraph, parent2sub_dict = cls_node_addition_to_graph(subgraph=subgraph,
                                                                special_relation_dict=special_relation2id,
                                                                cls_parent_node_id=cls_parent_node_id)
+    else:
+        parent_node_ids, sub_node_ids = subgraph.ndata['nid'].tolist(), subgraph.nodes().tolist()
+        parent2sub_dict = dict(zip(parent_node_ids, sub_node_ids))
+
     if self_loop:
         subgraph = add_self_loop_to_graph(graph=subgraph, self_loop_r=special_relation2id['loop_r'])
     assert len(parent2sub_dict) == subgraph.number_of_nodes()
