@@ -1,4 +1,5 @@
 from time import time
+from evens import PROJECT_FOLDER
 # from torch.nn.modules.instancenorm import _InstanceNorm
 # import torch.nn.functional as F
 # from torch import Tensor
