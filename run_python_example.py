@@ -244,12 +244,13 @@ g1 = dgl.edge_subgraph(graph=g, edges=[0, 2, 4])
 # # """
 # #     MLP Layer used after graph vector representation
 
-from codes.default_argparser import default_parser
+from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.graph_dataloader import node_classification_data_helper, self_supervised_node_data_helper
 from codes.utils import seed_everything
 from codes.simsiam_networks import SimSiam_Model_Builder, SimSiam_NodeClassification
 
 args = default_parser().parse_args()
+args = complete_default_parser(args=args)
 
 seed_everything(seed=args.seed)
 
