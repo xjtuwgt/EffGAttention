@@ -84,7 +84,7 @@ class SubGraphPairDataset(Dataset):
                 'batch_graph_2': (batch_graphs_2, batch_graph_cls, batch_anchor_id)}
 
 
-class self_supervised_node_data_helper(object):
+class SelfSupervisedNodeDataHelper(object):
     def __init__(self, config):
         self.config = config
         self.graph_type = self.config.graph_type
@@ -201,6 +201,55 @@ class NodeClassificationSubGraphDataset(Dataset):
         return {'batch_graph': (batch_graphs, batch_graph_cls, batch_anchor_id), 'batch_label': batch_label}
 
 
+class NodeClassificationDataHelper(object):
+    def __init__(self, config):
+        self.config = config
+        self.graph_type = self.config.graph_type
+        if self.graph_type == 'citation':
+            graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
+                citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
+                                                    hop_num=self.config.sub_graph_hop_num, rand_split=False)
+            self.node_split_idx = None
+        else:
+            graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
+            special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
+                                                                                   hop_num=self.config.sub_graph_hop_num)
+            self.node_split_idx = node_split_idx
+        graph = dgl.remove_self_loop(g=graph)
+        self.graph = graph
+        self.number_of_nodes = number_of_nodes
+        self.number_of_relations = number_of_relations
+        self.num_class = n_classes
+        self.n_feats = n_feats
+        self.special_entity_dict = special_node_dict
+        self.special_relation_dict = special_relation_dict
+        self.train_batch_size = self.config.train_batch_size
+        self.val_batch_size = self.config.eval_batch_size
+        self.edge_dir = self.config.sub_graph_edge_dir
+        self.self_loop = self.config.sub_graph_self_loop
+        self.fanouts = [int(_) for _ in self.config.sub_graph_fanouts.split(',')]
+        self.graph_augmentation = self.config.graph_augmentation
+
+    def data_loader(self, data_type):
+        assert data_type in {'train', 'valid', 'test'}
+        dataset = NodeClassificationSubGraphDataset(graph=self.graph, nentity=self.number_of_nodes,
+                                                    nrelation=self.number_of_relations,
+                                                    special_entity2id=self.special_entity_dict,
+                                                    special_relation2id=self.special_relation_dict,
+                                                    data_type=data_type, graph_type=self.graph_type,
+                                                    edge_dir=self.edge_dir, self_loop=self.self_loop,
+                                                    fanouts=self.fanouts, node_split_idx=self.node_split_idx)
+        if data_type in {'train'}:
+            batch_size = self.train_batch_size
+            shuffle = True
+        else:
+            batch_size = self.val_batch_size
+            shuffle = False
+        data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
+                                 collate_fn=NodeClassificationSubGraphDataset.collate_fn)
+        return data_loader
+
+
 class NodeClassificationSubGraphAugmentationDataset(Dataset):
     """
     Graph representation learning with node labels with data augmentation
@@ -273,51 +322,3 @@ class NodeClassificationSubGraphAugmentationDataset(Dataset):
         # +++++++++++++++++++++++++++++++++++++++
         return {'batch_graph': (batch_graphs, batch_graph_cls, batch_anchor_id), 'batch_label': batch_label}
 
-
-class node_classification_data_helper(object):
-    def __init__(self, config):
-        self.config = config
-        self.graph_type = self.config.graph_type
-        if self.graph_type == 'citation':
-            graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
-                citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
-                                                    hop_num=self.config.sub_graph_hop_num, rand_split=False)
-            self.node_split_idx = None
-        else:
-            graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
-            special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
-                                                                                   hop_num=self.config.sub_graph_hop_num)
-            self.node_split_idx = node_split_idx
-        graph = dgl.remove_self_loop(g=graph)
-        self.graph = graph
-        self.number_of_nodes = number_of_nodes
-        self.number_of_relations = number_of_relations
-        self.num_class = n_classes
-        self.n_feats = n_feats
-        self.special_entity_dict = special_node_dict
-        self.special_relation_dict = special_relation_dict
-        self.train_batch_size = self.config.train_batch_size
-        self.val_batch_size = self.config.eval_batch_size
-        self.edge_dir = self.config.sub_graph_edge_dir
-        self.self_loop = self.config.sub_graph_self_loop
-        self.fanouts = [int(_) for _ in self.config.sub_graph_fanouts.split(',')]
-        self.graph_augmentation = self.config.graph_augmentation
-
-    def data_loader(self, data_type):
-        assert data_type in {'train', 'valid', 'test'}
-        dataset = NodeClassificationSubGraphDataset(graph=self.graph, nentity=self.number_of_nodes,
-                                                    nrelation=self.number_of_relations,
-                                                    special_entity2id=self.special_entity_dict,
-                                                    special_relation2id=self.special_relation_dict,
-                                                    data_type=data_type, graph_type=self.graph_type,
-                                                    edge_dir=self.edge_dir, self_loop=self.self_loop,
-                                                    fanouts=self.fanouts, node_split_idx=self.node_split_idx)
-        if data_type in {'train'}:
-            batch_size = self.train_batch_size
-            shuffle = True
-        else:
-            batch_size = self.val_batch_size
-            shuffle = False
-        data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
-                                 collate_fn=NodeClassificationSubGraphDataset.collate_fn)
-        return data_loader
