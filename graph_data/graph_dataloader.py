@@ -10,6 +10,7 @@ from graph_data.ogb_graph_data import ogb_k_hop_graph_reconstruction
 from graph_data.ogb_graph_data import ogb_train_valid_test
 from codes.graph_utils import anchor_node_sub_graph_extractor
 from torch.utils.data import DataLoader
+from evens import PROJECT_FOLDER
 
 
 class SubGraphPairDataset(Dataset):
@@ -123,8 +124,12 @@ class SelfSupervisedNodeDataHelper(object):
                                       fanouts=self.fanouts)
         batch_size = self.train_batch_size
         shuffle = True
-        data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
-                                 collate_fn=SubGraphPairDataset.collate_fn, num_workers=8)
+        if PROJECT_FOLDER == '/Users/wangguangtao/PycharmProjects/EffAttnGNN':
+            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
+                                     collate_fn=SubGraphPairDataset.collate_fn, num_workers=0)
+        else:
+            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
+                                     collate_fn=SubGraphPairDataset.collate_fn, num_workers=self.config.cpu_num)
         return data_loader
 
 
@@ -245,8 +250,13 @@ class NodeClassificationDataHelper(object):
         else:
             batch_size = self.val_batch_size
             shuffle = False
-        data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
-                                 collate_fn=NodeClassificationSubGraphDataset.collate_fn)
+        if PROJECT_FOLDER == '/Users/wangguangtao/PycharmProjects/EffAttnGNN':
+            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
+                                     collate_fn=NodeClassificationSubGraphDataset.collate_fn)
+        else:
+            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
+                                     collate_fn=NodeClassificationSubGraphDataset.collate_fn,
+                                     num_workers=self.config.cpu_num)
         return data_loader
 
 
