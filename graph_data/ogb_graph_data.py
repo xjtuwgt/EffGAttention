@@ -53,8 +53,8 @@ def ogb_train_valid_test(node_split_idx: dict, data_type: str):
     return data_len, data_node_ids
 
 
-def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5, OON='zero'):
-    assert OON in {'zero', 'one', 'rand'}
+def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5, oon='zero'):
+    assert oon in {'zero', 'one', 'rand'}
     graph, node_split_idx, node_features, n_entities, n_relations, n_classes, n_feats = \
         ogb_nodeprop_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
@@ -68,7 +68,7 @@ def ogb_k_hop_graph_reconstruction(dataset: str, hop_num=5, OON='zero'):
     if number_of_added_nodes > 0:
         node_features = graph.ndata['feat']
         added_node_features = OON_Initialization(oon_num=number_of_added_nodes, num_feats=node_features.shape[1],
-                                                 OON=OON)
+                                                 oon=oon)
         graph.ndata['feat'][-2:] = added_node_features
     number_of_nodes = graph.number_of_nodes()
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

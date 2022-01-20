@@ -53,8 +53,8 @@ def add_self_loop_to_graph(graph, self_loop_r: int):
     """
     g = copy.deepcopy(graph)
     number_of_nodes = g.number_of_nodes()
-    self_loop_r_array = torch.full((number_of_nodes,), self_loop_r, dtype=torch.long)
-    node_ids = torch.arange(number_of_nodes)
+    self_loop_r_array = torch.full((number_of_nodes,), self_loop_r, dtype=torch.long).to(graph.device)
+    node_ids = torch.arange(number_of_nodes).to(graph.device)
     g.add_edges(node_ids, node_ids, {'rid': self_loop_r_array})
     return g
 
@@ -173,7 +173,7 @@ def sub_graph_rwr_sample(graph: DGLHeteroGraph, anchor_node_ids: Tensor, cls_nod
     return neighbors_dict, node_pos_label_dict, edge_dict
 
 
-def sub_graph_constructor(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict: dict, bi_directed: bool = True):
+def sub_graph_construction(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict: dict, bi_directed: bool = True):
     """
     :param graph: original graph
     :param edge_dict: edge dictionary: eid--> (src_node, edge_type, dst_node)
@@ -183,7 +183,7 @@ def sub_graph_constructor(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict
     """
     if len(edge_dict) == 0:
         assert 'anchor' in neighbors_dict
-        return single_node_sub_graph_extractor(graph=graph, neighbors_dict=neighbors_dict)
+        return single_node_sub_graph_extraction(graph=graph, neighbors_dict=neighbors_dict)
     edge_ids = list(edge_dict.keys())
     if bi_directed:
         parent_triples = np.array(list(edge_dict.values()))
@@ -200,7 +200,7 @@ def sub_graph_constructor(graph: DGLHeteroGraph, edge_dict: dict, neighbors_dict
 # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-def single_node_sub_graph_extractor(graph, neighbors_dict: dict):
+def single_node_sub_graph_extraction(graph, neighbors_dict: dict):
     """
     :param graph:
     :param neighbors_dict: int --> (anchor_ids, anchor_counts)
@@ -211,17 +211,17 @@ def single_node_sub_graph_extractor(graph, neighbors_dict: dict):
     return sub_graph
 
 
-def OON_Initialization(oon_num: int, num_feats: int, OON: str):
-    if OON == 'zero':
+def OON_Initialization(oon_num: int, num_feats: int, oon: str):
+    if oon == 'zero':
         added_node_features = torch.zeros((oon_num, num_feats), dtype=torch.float)
-    elif OON == 'one':
+    elif oon == 'one':
         added_node_features = torch.ones((oon_num, num_feats), dtype=torch.float)
-    elif OON == 'rand':
+    elif oon == 'rand':
         initial_weight = small_init_gain(d_in=num_feats, d_out=num_feats)
         added_node_features = torch.zeros((oon_num, num_feats), dtype=torch.float)
         added_node_features = nn.init.xavier_normal_(added_node_features.data.unsqueeze(0), gain=initial_weight)
     else:
-        raise 'OON mode {} is not supported'.format(OON)
+        raise 'OON mode {} is not supported'.format(oon)
     return added_node_features
 
 
@@ -259,18 +259,19 @@ def anchor_node_sub_graph_extractor(graph, anchor_node_ids: Tensor, cls_node_ids
                                                                                cls_node_ids=cls_node_ids,
                                                                                fanouts=fanouts, edge_dir=edge_dir,
                                                                                debug=debug)
-    subgraph = sub_graph_constructor(graph=graph, edge_dict=edge_dict, bi_directed=bi_directed,
-                                     neighbors_dict=neighbors_dict)
+    subgraph = sub_graph_construction(graph=graph, edge_dict=edge_dict, bi_directed=bi_directed,
+                                      neighbors_dict=neighbors_dict)
     parent_node_ids, sub_node_ids = subgraph.ndata['nid'].tolist(), subgraph.nodes().tolist()
     parent2sub_dict = dict(zip(parent_node_ids, sub_node_ids))
     if cls:
         cls_parent_node_id = neighbors_dict['cls'][0][0].data.item()
-        subgraph, parent2sub_dict = cls_node_addition_to_graph(subgraph=subgraph, special_relation_dict=special_relation2id,
+        subgraph, parent2sub_dict = cls_node_addition_to_graph(subgraph=subgraph,
+                                                               special_relation_dict=special_relation2id,
                                                                cls_parent_node_id=cls_parent_node_id)
     if self_loop:
         subgraph = add_self_loop_to_graph(graph=subgraph, self_loop_r=special_relation2id['loop_r'])
     assert len(parent2sub_dict) == subgraph.number_of_nodes()
-    node_orders = torch.zeros(len(parent2sub_dict), dtype=torch.long)
+    node_orders = torch.zeros(len(parent2sub_dict), dtype=torch.long).to(graph.device)
     for key, value in parent2sub_dict.items():
         node_orders[value] = node_pos_label_dict[key]
     subgraph.ndata['n_rw_pos'] = node_orders

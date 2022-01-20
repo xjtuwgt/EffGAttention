@@ -83,7 +83,7 @@ def citation_graph_rand_split_construction(dataset: str):
     return new_graph, n_entities, n_relations, n_classes, n_feats
 
 
-def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=False, OON='zero', bidirected: bool=True):
+def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=False, oon='zero'):
     print('Bi-directional homogeneous graph: {}'.format(dataset))
     if rand_split:
         graph, n_entities, n_relations, n_classes, n_feats = \
@@ -93,7 +93,7 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
             citation_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
     special_relation_dict = special_graph_dictionary_construction(graph=graph, n_relations=n_relations,
-                                                                  hop_num=hop_num, bidirected=bidirected)
+                                                                  hop_num=hop_num)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata['label'][-2:] = -IGNORE_IDX
     graph.ndata['val_mask'][-2:] = False
@@ -106,7 +106,7 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
     if number_of_added_nodes > 0:
         node_features = graph.ndata['feat']
         added_node_features = OON_Initialization(oon_num=number_of_added_nodes, num_feats=node_features.shape[1],
-                                                 OON=OON)
+                                                 oon=oon)
         graph.ndata['feat'][-2:] = added_node_features
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     number_of_nodes = graph.number_of_nodes()
