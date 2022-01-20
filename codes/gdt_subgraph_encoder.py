@@ -52,8 +52,8 @@ class GDTSubGraphEncoder(nn.Module):
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
 
-    def forward(self, batch_g_pair, cls_or_anchor: str = 'cls'):
-        batch_g = batch_g_pair[0]
+    def forward(self, batch_g_tuple, cls_or_anchor: str = 'cls'):
+        batch_g = batch_g_tuple[0]
         ent_ids = batch_g.ndata['nid']
         ent_features = self.ent_ember(ent_ids)
         if self.config.relative_position:
@@ -65,9 +65,9 @@ class GDTSubGraphEncoder(nn.Module):
             for _ in range(self.config.layers):
                 h = self.graph_encoder[_](batch_g, h)
             if cls_or_anchor == 'cls':
-                batch_node_ids = batch_g_pair[1]
+                batch_node_ids = batch_g_tuple[1]
             elif cls_or_anchor == 'anchor':
-                batch_node_ids = batch_g_pair[2]
+                batch_node_ids = batch_g_tuple[2]
             else:
                 raise '{} is not supported'.format(cls_or_anchor)
             batch_graph_embed = h[batch_node_ids]
@@ -139,8 +139,8 @@ class RGDTSubGraphEncoder(nn.Module):
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
 
-    def forward(self, batch_g_pair, cls_or_anchor: str = 'cls'):
-        batch_g = batch_g_pair[0]
+    def forward(self, batch_g_tuple, cls_or_anchor: str = 'cls'):
+        batch_g = batch_g_tuple[0]
         ent_ids = batch_g.ndata['nid']
         rel_ids = batch_g.edata['rid']
         ent_features = self.ent_ember(ent_ids)
@@ -157,10 +157,11 @@ class RGDTSubGraphEncoder(nn.Module):
                 else:
                     h = self.graph_encoder[_](batch_g, h)
             if cls_or_anchor == 'cls':
-                batch_node_ids = batch_g_pair[1]
+                batch_node_ids = batch_g_tuple[1]
             elif cls_or_anchor == 'anchor':
-                batch_node_ids = batch_g_pair[2]
+                batch_node_ids = batch_g_tuple[2]
             else:
                 raise '{} is not supported'.format(cls_or_anchor)
             batch_graph_embed = h[batch_node_ids]
             return batch_graph_embed
+

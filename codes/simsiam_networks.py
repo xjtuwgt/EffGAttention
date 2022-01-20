@@ -41,8 +41,8 @@ class SimSiam(nn.Module):
     def forward(self, x1, x2, cls_or_anchor='cls'):
         """
         Input:
-            x1: first views of input
-            x2: second views of input
+            x1: first views of input graph
+            x2: second views of input graph
             cls_or_anchor: 'cls' or 'anchor'
         Output:
             p1, p2, z1, z2: predictors and targets of the network
