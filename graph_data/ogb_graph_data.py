@@ -51,6 +51,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         n_feats = 0
         nentities, nrelations = graph.number_of_nodes(), 1
         print(graph.ndata.keys())
+        print(graph.edata.keys())
     else:
         raise 'Dataset {} is not supported'.format(dataset)
     print('Number of nodes = {}'.format(graph.number_of_nodes()))
