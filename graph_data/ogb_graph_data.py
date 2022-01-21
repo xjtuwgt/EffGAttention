@@ -52,6 +52,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         nentities, nrelations = graph.number_of_nodes(), 1
         print(graph.ndata.keys())
         print(graph.ndata['species'].shape)
+        print(torch.unique(graph.ndata['species'].squeeze(1)))
         print(graph.edata.keys())
     else:
         raise 'Dataset {} is not supported'.format(dataset)
