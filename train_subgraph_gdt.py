@@ -1,12 +1,13 @@
 import numpy as np
 import time
 import torch
-from codes.gdt_encoder import GraphNodeClassification as NodeClassifier
-from codes.gdt_v2_encoder import GraphNodeClassification as NodeClassifierV2
 from torch.optim import Adam
+from tqdm import tqdm, trange
 from codes.default_argparser import default_parser, complete_default_parser
 from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
 from transformers.optimization import get_cosine_schedule_with_warmup
+from graph_data.graph_dataloader import NodeClassificationDataHelper
+from codes.simsiam_networks import SimSiamNodeClassification
 import logging
 from codes.utils import seed_everything
 from codes.utils import citation_hyper_parameter_space, citation_random_search_hyper_tunner
@@ -25,118 +26,51 @@ def accuracy(logits, labels, debug=False):
     return correct.item() * 1.0 / len(labels)
 
 
-def evaluate(graph, model, features, labels, mask, debug=False, loss=False):
-    model.eval()
-    loss_fcn = torch.nn.CrossEntropyLoss()
-    with torch.no_grad():
-        logits = model(graph, features)
-        logits = logits[mask]
-        labels = labels[mask]
-        if loss:
-            valid_loss = loss_fcn(logits, labels)
-            return accuracy(logits, labels, debug=debug), valid_loss
-        return accuracy(logits, labels, debug=debug)
+def evaluate(model, data_helper, data_type, debug=False, loss=False):
+    return
 
 
-def model_train(g, model, features, labels, train_mask, val_mask, test_mask, optimizer, scheduler, args):
+def model_train(model, data_helper, optimizer, scheduler, args):
     dur = []
     best_val_acc = 0.0
-    best_val_loss = 1e9
     best_test_acc = 0.0
     t0 = time.time()
-    train_mask_backup = train_mask.clone()
     patience_count = 0
-    n_edges = g.number_of_edges()
     loss_fcn = torch.nn.CrossEntropyLoss()
     torch.autograd.set_detect_anomaly(True)
+
+    # **********************************************************************************
+    start_epoch = 0
+    args.num_train_epochs = 1
+    # **********************************************************************************
+    logging.info('Starting training the model...')
+    train_iterator = trange(start_epoch, start_epoch + int(args.num_train_epochs), desc="Epoch",
+                            disable=args.local_rank not in [-1, 0])
+    train_data_loader = data_helper.data_loader(data_type='train')
+    logging.info('Loading training data = {} completed'.format(len(train_data_loader)))
+    logging.info('*' * 75)
+
     for epoch in range(args.num_train_epochs):
-        model.train()
-        if epoch >= 3:
-            t0 = time.time()
+        epoch_iterator = tqdm(train_data_loader, desc="Iteration", disable=args.local_rank not in [-1, 0])
+        for step, batch in enumerate(epoch_iterator):
+            model.train()
+            batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
+
+            print(type(batch_graphs[0]), type(batch_graphs[1]), type(batch_graphs[2]))
+            print(type(batch))
+            print(batch.keys())
         # forward
-        logits = model(g, features)
-        # train_mask = label_mask_drop(train_mask=train_mask_backup, drop_ratio=0.25)
-        loss = loss_fcn(logits[train_mask], labels[train_mask])
-        optimizer.zero_grad()
-        loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
-        optimizer.step()
-        scheduler.step()
 
-        if epoch >= 3:
-            dur.append(time.time() - t0)
-
-        train_acc = accuracy(logits[train_mask], labels[train_mask])
-
-        if args.fastmode:
-            val_acc = accuracy(logits[val_mask], labels[val_mask])
-            if args.model_selection_mode == 'loss':
-                val_loss = loss_fcn(logits[val_mask], labels[val_mask])
-            test_acc = accuracy(logits[test_mask], labels[test_mask])
-        else:
-            if args.model_selection_mode == 'loss':
-                val_acc, val_loss = evaluate(g, model, features, labels, val_mask, debug=False, loss=True)
-            else:
-                val_acc = evaluate(g, model, features, labels, val_mask, debug=False, loss=False)
-            test_acc = evaluate(g, model, features, labels, test_mask)
-
-        if args.model_selection_mode == 'accuracy':
-            if best_val_acc <= val_acc:
-                best_val_acc = val_acc
-                best_test_acc = test_acc
-                patience_count = 0
-            else:
-                patience_count = patience_count + 1
-                if patience_count >= args.patience:
-                    break
-        else:
-            if best_val_loss > val_loss:
-                best_val_loss = val_loss
-                best_val_acc = val_acc
-                best_test_acc = test_acc
-                patience_count = 0
-            else:
-                patience_count = patience_count + 1
-                if patience_count >= args.patience:
-                    break
-        logger.info("Epoch {:04d} | Time(s) {:.4f} | Loss {:.4f} | TrainAcc {:.4f} |"
-                    " ValAcc {:.4f} | B/ValAcc {:.4f} | B/TestAcc {:.4f} | ETputs (KTEPS) {:.2f}".
-                    format(epoch, np.mean(dur), loss.item(), train_acc,
-                           val_acc, best_val_acc, best_test_acc, n_edges / np.mean(dur) / 1000))
-
-    logger.info('\n')
-    test_acc, test_predictions, test_true_labels = evaluate(g, model, features, labels, test_mask, debug=True)
-    logger.info("Final Test Accuracy {:.4f} | Best ValAcc {:.4f} | Best TestAcc {:.4f} |".format(test_acc,
-                                                                                                 best_val_acc,
-                                                                                                 best_test_acc))
-    return test_acc, best_val_acc, best_test_acc
+    return best_val_acc, best_test_acc
 
 
 def main(args):
     args = complete_default_parser(args=args)
-    g, _, n_relations, n_classes, _, _, special_relation_dict = \
-        citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5, rand_split=False)
-    logger.info("Number of relations = {}".format(n_relations))
-    args.num_classes = n_classes
-    args.node_emb_dim = g.ndata['feat'].shape[1]
-    g = g.int().to(args.device)
-    features = g.ndata['feat']
-    labels = g.ndata['label']
-    train_mask = g.ndata['train_mask']
-    val_mask = g.ndata['val_mask']
-    test_mask = g.ndata['test_mask']
-    n_edges = g.number_of_edges()
-    logger.info("""----Data statistics------'
-      #Edges %d
-      #Classes %d
-      #Train samples %d
-      #Val samples %d
-      #Test samples %d""" %
-          (n_edges, n_classes,
-           train_mask.int().sum().item(),
-           val_mask.int().sum().item(),
-           test_mask.int().sum().item()))
-
+    data_helper = NodeClassificationDataHelper(config=args)
+    args.num_classes = data_helper.num_class
+    node_features = data_helper.node_features
+    args.num_entities = data_helper.number_of_nodes
+    args.num_relations = data_helper.number_of_relations
     num_of_experiments = args.exp_number
     hyper_search_space = citation_hyper_parameter_space()
     acc_list = []
@@ -150,46 +84,39 @@ def main(args):
         for key, value in vars(args).items():
             logging.info('Hyper-Para {}: {}'.format(key, value))
         logging.info('*' * 75)
-        # create model
         seed_everything(seed=args.seed)
-        if args.encoder_v2:
-            model = NodeClassifierV2(config=args)
-        else:
-            model = NodeClassifier(config=args)
+        # create model
+        model = SimSiamNodeClassification(config=args)
         model.to(args.device)
         if args.relation_encoder:
-            model.init_graph_ember(ent_emb=features, ent_freeze=True)
+            model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
         # ++++++++++++++++++++++++++++++++++++
         logging.info('Model Parameter Configuration:')
         for name, param in model.named_parameters():
             logging.info('Parameter {}: {}, require_grad = {}'.format(name, str(param.size()),
                                                                       str(param.requires_grad)))
         logging.info('*' * 75)
-        # ++++++++++++++++++++++++++++++++++++
+        # create optimizer and scheduler
         optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
         scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                     num_training_steps=args.num_train_epochs)
-
-        test_acc, best_val_acc, best_test_acc = model_train(g=g, model=model, train_mask=train_mask,
-                                                            val_mask=val_mask, test_mask=test_mask,
-                                                            features=features, labels=labels,
-                                                            optimizer=optimizer, scheduler=scheduler,
-                                                            args=args)
-        acc_list.append((hyper_setting_i, test_acc, best_val_acc, best_test_acc))
-        logger.info('*' * 50)
-        logger.info('{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(hyper_setting_i, test_acc, best_val_acc, best_test_acc))
-        logger.info('*' * 50)
-        if search_best_val_acc < best_val_acc:
-            search_best_val_acc = best_val_acc
-            search_best_test_acc = best_test_acc
-            search_best_settings = hyper_setting_i
-        logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
-                                                                                     search_best_val_acc))
-        logger.info('*' * 30)
-    for _, setting_acc in enumerate(acc_list):
-        print(_, setting_acc)
-    print(search_best_test_acc)
-    print(search_best_settings)
+        # start model training
+        model_train(model=model, data_helper=data_helper, optimizer=optimizer, scheduler=scheduler, args=args)
+    #     acc_list.append((hyper_setting_i, test_acc, best_val_acc, best_test_acc))
+    #     logger.info('*' * 50)
+    #     logger.info('{}\t{:.4f}\t{:.4f}\t{:.4f}'.format(hyper_setting_i, test_acc, best_val_acc, best_test_acc))
+    #     logger.info('*' * 50)
+    #     if search_best_val_acc < best_val_acc:
+    #         search_best_val_acc = best_val_acc
+    #         search_best_test_acc = best_test_acc
+    #         search_best_settings = hyper_setting_i
+    #     logger.info('Current best testing acc = {:.4f} and best dev acc = {}'.format(search_best_test_acc,
+    #                                                                                  search_best_val_acc))
+    #     logger.info('*' * 30)
+    # for _, setting_acc in enumerate(acc_list):
+    #     print(_, setting_acc)
+    # print(search_best_test_acc)
+    # print(search_best_settings)
 
 
 if __name__ == '__main__':

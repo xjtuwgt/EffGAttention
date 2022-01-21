@@ -1,11 +1,12 @@
 import numpy as np
 import time
 import torch
+import dgl
 from codes.gdt_encoder import GraphNodeClassification as NodeClassifier
 from codes.gdt_v2_encoder import GraphNodeClassification as NodeClassifierV2
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, add_self_loop_to_graph
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
 from codes.utils import seed_everything
@@ -114,10 +115,13 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
 
 def main(args):
     args = complete_default_parser(args=args)
-    g, _, n_relations, n_classes, _, _, special_relation_dict = \
-        citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5, rand_split=False)
+    g, number_of_nodes, n_relations, n_classes, _, _, special_relation_dict = \
+        citation_k_hop_graph_reconstruction(dataset=args.citation_name, hop_num=5,
+                                            rand_split=False, cls=False)
     logger.info("Number of relations = {}".format(n_relations))
     args.num_classes = n_classes
+    args.num_entities = number_of_nodes
+    args.num_relations = n_relations
     args.node_emb_dim = g.ndata['feat'].shape[1]
     g = g.int().to(args.device)
     features = g.ndata['feat']
