@@ -91,7 +91,7 @@ class SelfSupervisedNodeDataHelper(object):
         self.graph_type = self.config.graph_type
         if self.graph_type == 'citation':
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
-                citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
+                citation_k_hop_graph_reconstruction(dataset=self.config.citation_node_name,
                                                     hop_num=self.config.sub_graph_hop_num, rand_split=False)
             self.node_split_idx = None
         else:
