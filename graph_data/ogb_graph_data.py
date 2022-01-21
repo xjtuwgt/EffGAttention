@@ -28,20 +28,24 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     graph.ndata['label'] = labels
     # +++++++++++++++++++++++++++++++++
     n_classes = labels.max().data.item()
-    node_features = graph.ndata['feat']
-    n_feats = node_features.shape[1]
-    if dataset in {'ogbn-products', 'ogbn-proteins'}:  # 'ogbn-proteins'
+    if dataset in {'ogbn-products'}:
+        node_features = graph.ndata['feat']
+        n_feats = node_features.shape[1]
         number_of_edges = graph.number_of_edges()
         edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
         graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
         nentities, nrelations = graph.number_of_nodes(), 1
     elif dataset in {'ogbn-arxiv', 'ogbn-papers100M'}:
+        node_features = graph.ndata['feat']
+        n_feats = node_features.shape[1]
         number_of_edges = graph.number_of_edges()
         edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
         graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
         src_nodes, dst_nodes = graph.edges()
         graph.add_edges(dst_nodes, src_nodes, {'rid': edge_type_ids + 1})
         nentities, nrelations = graph.number_of_nodes(), 2
+    elif dataset in {'ogbn-proteins'}:
+        print(graph.ndata)
     else:
         raise 'Dataset {} is not supported'.format(dataset)
     print('Number of nodes = {}'.format(graph.number_of_nodes()))
