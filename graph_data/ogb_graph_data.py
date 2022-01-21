@@ -44,14 +44,6 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         src_nodes, dst_nodes = graph.edges()
         graph.add_edges(dst_nodes, src_nodes, {'rid': edge_type_ids + 1})
         nentities, nrelations = graph.number_of_nodes(), 2
-    elif dataset in {'ogbn-mag'}:
-        n_classes = 2
-        # print(labels)
-        node_features = None
-        n_feats = 0
-        nentities, nrelations = graph.number_of_nodes(), 1
-        print(graph.ndata.keys())
-        print(graph.edata.keys())
     else:
         raise 'Dataset {} is not supported'.format(dataset)
     print('Number of nodes = {}'.format(graph.number_of_nodes()))
