@@ -30,7 +30,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     n_classes = labels.max().data.item()
     node_features = graph.ndata['feat']
     n_feats = node_features.shape[1]
-    if dataset in {'ogbn-products'}:  # 'ogbn-proteins'
+    if dataset in {'ogbn-products', 'ogbn-proteins'}:  # 'ogbn-proteins'
         number_of_edges = graph.number_of_edges()
         edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
         graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
