@@ -5,7 +5,7 @@ from codes.gdt_encoder import GraphNodeClassification as NodeClassifier
 from codes.gdt_v2_encoder import GraphNodeClassification as NodeClassifierV2
 from torch.optim import Adam
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction, add_self_loop_to_graph
+from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
 from transformers.optimization import get_cosine_schedule_with_warmup
 import logging
 from codes.utils import seed_everything
@@ -42,6 +42,7 @@ def model_train(g, model, features, labels, train_mask, val_mask, test_mask, opt
     dur = []
     best_val_acc = 0.0
     best_val_loss = 1e9
+    val_loss = 0.0
     best_test_acc = 0.0
     t0 = time.time()
     train_mask_backup = train_mask.clone()
