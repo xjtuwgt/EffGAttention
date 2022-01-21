@@ -102,8 +102,6 @@ class RGDTEncoder(nn.Module):
 
     def forward(self, graph, inputs: Tensor=None):
         if inputs is None:
-            print(graph.number_of_nodes())
-            print(self.ent_ember.num)
             assert graph.number_of_nodes() <= self.ent_ember.num
         e_h = self.ent_ember(torch.arange(graph.number_of_nodes()).to(self.dummy_param.device))
         r_h = self.rel_ember(torch.arange(self.config.num_relations).to(self.dummy_param.device))

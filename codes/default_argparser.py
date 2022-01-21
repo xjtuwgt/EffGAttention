@@ -85,7 +85,7 @@ def default_parser():
     parser.add_argument('--ogb_node_name', type=str, default='ogbn-arxiv')
     parser.add_argument('--graph_type', type=str, default='citation', choices=["citation", "ogb"])
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
-    parser.add_argument('--relation_encoder', type=boolean_string, default='true')
+    parser.add_argument('--relation_encoder', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5,5')
     parser.add_argument('--sub_graph_hop_num', type=int, default=6)
