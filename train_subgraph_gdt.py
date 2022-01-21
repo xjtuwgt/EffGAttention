@@ -4,7 +4,6 @@ import torch
 from torch.optim import Adam
 from tqdm import tqdm, trange
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.citation_graph_data import citation_k_hop_graph_reconstruction
 from transformers.optimization import get_cosine_schedule_with_warmup
 from graph_data.graph_dataloader import NodeClassificationDataHelper
 from codes.simsiam_networks import SimSiamNodeClassification

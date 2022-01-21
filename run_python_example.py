@@ -258,9 +258,9 @@ seed_everything(seed=args.seed)
 dataHelper = SelfSupervisedNodeDataHelper(config=args)
 ssl_train_data = dataHelper.data_loader()
 start_time = time()
-# for batch_idx, batch in enumerate(ssl_train_data):
-#     if batch_idx % 200 == 0:
-#         print(batch_idx)
+for batch_idx, batch in enumerate(ssl_train_data):
+    if batch_idx % 200 == 0:
+        print(batch_idx)
 print('Runtime = {}'.format(time() - start_time))
 # datahelper = node_classification_data_helper(config=args)
 # args.num_classes = datahelper.num_class
@@ -272,8 +272,8 @@ print('Runtime = {}'.format(time() - start_time))
 #
 # train_data = datahelper.data_loader(data_type='train')
 
-simsiam_classifier = SimSiamNodeClassification(config=args)
-print(simsiam_classifier)
+# simsiam_classifier = SimSiamNodeClassification(config=args)
+# print(simsiam_classifier)
 
 # simsiam_model = SimSiam_Model_Builder(config=args)
 # simsiam_model.graph_encoder.init_graph_ember(ent_emb=node_features, ent_freeze=True)
