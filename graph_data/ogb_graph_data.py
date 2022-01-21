@@ -47,7 +47,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         nentities, nrelations = graph.number_of_nodes(), 2
     elif dataset in {'ogbn-mag'}:
         n_classes = 2
-        print(labels)
+        # print(labels)
         node_features = None
         n_feats = 0
         nentities, nrelations = graph.number_of_nodes(), 1
