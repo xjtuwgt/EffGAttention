@@ -261,6 +261,7 @@ start_time = time()
 for batch_idx, batch in enumerate(ssl_train_data):
     if batch_idx % 200 == 0:
         print(batch_idx)
+        print(batch)
 print('Runtime = {}'.format(time() - start_time))
 # datahelper = node_classification_data_helper(config=args)
 # args.num_classes = datahelper.num_class
