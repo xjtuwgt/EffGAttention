@@ -1,7 +1,6 @@
 import numpy as np
 import time
 import torch
-import dgl
 from codes.gdt_encoder import GraphNodeClassification as NodeClassifier
 from codes.gdt_v2_encoder import GraphNodeClassification as NodeClassifierV2
 from torch.optim import Adam
