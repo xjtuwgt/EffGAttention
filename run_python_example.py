@@ -259,7 +259,7 @@ dataHelper = SelfSupervisedNodeDataHelper(config=args)
 ssl_train_data = dataHelper.data_loader()
 start_time = time()
 for batch_idx, batch in enumerate(ssl_train_data):
-    print(batch['batch_graph_2'][0].number_of_nodes())
+    print('ratio = {}'.format(batch['batch_graph_2'][0].number_of_nodes() * 1.0/dataHelper.number_of_nodes))
     if batch_idx % 200 == 0:
         print(batch_idx)
         print(batch['batch_graph_2'][0].number_of_nodes())
