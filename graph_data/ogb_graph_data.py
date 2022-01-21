@@ -33,7 +33,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
         graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
         nentities, nrelations = graph.number_of_nodes(), 1
-    elif dataset in {'ogbn-arxiv', 'ogbn-papers100M'}:
+    elif dataset in {'ogbn-arxiv'}:
         n_classes = labels.max().data.item()
         node_features = graph.ndata['feat']
         graph.ndata['label'] = labels
