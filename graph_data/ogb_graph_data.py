@@ -27,8 +27,8 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     # +++++++++++++++++++++++++++++++++
     graph.ndata['label'] = labels
     # +++++++++++++++++++++++++++++++++
-    n_classes = labels.max().data.item()
     if dataset in {'ogbn-products'}:
+        n_classes = labels.max().data.item()
         node_features = graph.ndata['feat']
         n_feats = node_features.shape[1]
         number_of_edges = graph.number_of_edges()
@@ -36,6 +36,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
         nentities, nrelations = graph.number_of_nodes(), 1
     elif dataset in {'ogbn-arxiv', 'ogbn-papers100M'}:
+        n_classes = labels.max().data.item()
         node_features = graph.ndata['feat']
         n_feats = node_features.shape[1]
         number_of_edges = graph.number_of_edges()
@@ -45,6 +46,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         graph.add_edges(dst_nodes, src_nodes, {'rid': edge_type_ids + 1})
         nentities, nrelations = graph.number_of_nodes(), 2
     elif dataset in {'ogbn-proteins'}:
+        n_classes = 2
         node_features = None
         n_feats = 0
         nentities, nrelations = graph.number_of_nodes(), 1
