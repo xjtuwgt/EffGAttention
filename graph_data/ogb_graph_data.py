@@ -24,12 +24,10 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     data = DglNodePropPredDataset(name=dataset, root=ogb_root)
     node_split_idx = data.get_idx_split()
     graph, labels = data[0]
-    # +++++++++++++++++++++++++++++++++
-    graph.ndata['label'] = labels
-    # +++++++++++++++++++++++++++++++++
     if dataset in {'ogbn-products'}:
         n_classes = labels.max().data.item()
         node_features = graph.ndata['feat']
+        graph.ndata['label'] = labels
         n_feats = node_features.shape[1]
         number_of_edges = graph.number_of_edges()
         edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
@@ -38,6 +36,7 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
     elif dataset in {'ogbn-arxiv', 'ogbn-papers100M'}:
         n_classes = labels.max().data.item()
         node_features = graph.ndata['feat']
+        graph.ndata['label'] = labels
         n_feats = node_features.shape[1]
         number_of_edges = graph.number_of_edges()
         edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
