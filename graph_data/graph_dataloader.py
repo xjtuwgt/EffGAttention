@@ -214,13 +214,13 @@ class NodeClassificationDataHelper(object):
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
                 citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
                                                     hop_num=self.config.sub_graph_hop_num, rand_split=False,
-                                                    oon=self.config.oon_type)
+                                                    oon=self.config.oon_type, cls=True)
             self.node_split_idx = None
         else:
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
             special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
                                                                                    hop_num=self.config.sub_graph_hop_num,
-                                                                                   oon=self.config.oon_type)
+                                                                                   oon=self.config.oon_type, cls=True)
             self.node_split_idx = node_split_idx
         graph = dgl.remove_self_loop(g=graph)
         graph = graph.int().to(self.config.device)
@@ -247,7 +247,8 @@ class NodeClassificationDataHelper(object):
                                                     special_relation2id=self.special_relation_dict,
                                                     data_type=data_type, graph_type=self.graph_type,
                                                     edge_dir=self.edge_dir, self_loop=self.self_loop,
-                                                    fanouts=self.fanouts, node_split_idx=self.node_split_idx)
+                                                    fanouts=self.fanouts, cls=True,
+                                                    node_split_idx=self.node_split_idx)
         if data_type in {'train'}:
             batch_size = self.train_batch_size
             shuffle = True
