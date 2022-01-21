@@ -45,6 +45,9 @@ def ogb_nodeprop_graph_reconstruction(dataset: str):
         graph.add_edges(dst_nodes, src_nodes, {'rid': edge_type_ids + 1})
         nentities, nrelations = graph.number_of_nodes(), 2
     elif dataset in {'ogbn-proteins'}:
+        node_features = None
+        n_feats = 0
+        nentities, nrelations = graph.number_of_nodes(), 1
         print(graph.ndata)
     else:
         raise 'Dataset {} is not supported'.format(dataset)
