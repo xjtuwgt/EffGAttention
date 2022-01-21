@@ -12,12 +12,12 @@ class GDTSubGraphEncoder(nn.Module):
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
         if self.config.relative_position:
             position_num = self.config.sub_graph_hop_num + 2
-            if self.config.node_emb_dim == self.config.arw_pos_emb_dim:
+            if self.config.node_emb_dim == self.config.pos_emb_dim:
                 self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.arw_pos_emb_dim)
+                                                           dim=self.config.pos_emb_dim)
             else:
                 self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.arw_pos_emb_dim,
+                                                           dim=self.config.pos_emb_dim,
                                                            project_dim=self.config.node_emb_dim)
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
@@ -93,12 +93,12 @@ class RGDTSubGraphEncoder(nn.Module):
 
         if self.config.relative_position:
             position_num = self.config.sub_graph_hop_num + 2
-            if self.config.node_emb_dim == self.config.arw_pos_emb_dim:
+            if self.config.node_emb_dim == self.config.pos_emb_dim:
                 self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.arw_pos_emb_dim)
+                                                           dim=self.config.pos_emb_dim)
             else:
                 self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.arw_pos_emb_dim,
+                                                           dim=self.config.pos_emb_dim,
                                                            project_dim=self.config.node_emb_dim)
 
         ent_in_dim = self.config.node_emb_dim

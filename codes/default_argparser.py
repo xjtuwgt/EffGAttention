@@ -85,7 +85,7 @@ def default_parser():
     parser.add_argument('--ogb_node_name', type=str, default='ogbn-arxiv')
     parser.add_argument('--graph_type', type=str, default='citation', choices=["citation", "ogb"])
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
-    parser.add_argument('--relation_encoder', type=boolean_string, default='false')
+    parser.add_argument('--relation_encoder', type=boolean_string, default='true')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5,5')
     parser.add_argument('--sub_graph_hop_num', type=int, default=6)
@@ -95,6 +95,7 @@ def default_parser():
     parser.add_argument('--graph_augmentation', type=boolean_string, default='false')
     parser.add_argument('--relative_position', type=boolean_string, default='true')
     parser.add_argument('--cls_or_anchor', type=str, default='cls', choices=["cls", "anchor"])
+    parser.add_argument('--oon_type', type=str, default='zero', choices=["zero", "one", "rand"])
     parser.add_argument('--siam_project', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--node_emb_dim', type=int, default=300)
@@ -102,6 +103,7 @@ def default_parser():
     parser.add_argument('--num_entities', type=int, default=2)
     parser.add_argument('--num_relations', type=int, default=2)
     parser.add_argument('--rel_emb_dim', type=int, default=512)
+    parser.add_argument('--pos_emb_dim', type=int, default=300)
     parser.add_argument('--proj_emb_dim', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--feat_drop', type=float, default=0.55)
@@ -130,7 +132,7 @@ def default_parser():
     parser.add_argument("--gpu", type=int, default=-1, help="which GPU to use. Set -1 to use CPU.")
     # learning and log ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
-    parser.add_argument("--num_train_epochs", default=300, type=int,
+    parser.add_argument("--num_train_epochs", default=1, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")

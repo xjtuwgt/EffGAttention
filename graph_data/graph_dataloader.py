@@ -213,19 +213,23 @@ class NodeClassificationDataHelper(object):
         if self.graph_type == 'citation':
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict = \
                 citation_k_hop_graph_reconstruction(dataset=self.config.citation_name,
-                                                    hop_num=self.config.sub_graph_hop_num, rand_split=False)
+                                                    hop_num=self.config.sub_graph_hop_num, rand_split=False,
+                                                    oon=self.config.oon_type)
             self.node_split_idx = None
         else:
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
             special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
-                                                                                   hop_num=self.config.sub_graph_hop_num)
+                                                                                   hop_num=self.config.sub_graph_hop_num,
+                                                                                   oon=self.config.oon_type)
             self.node_split_idx = node_split_idx
         graph = dgl.remove_self_loop(g=graph)
+        graph = graph.int().to(self.config.device)
         self.graph = graph
         self.number_of_nodes = number_of_nodes
         self.number_of_relations = number_of_relations
         self.num_class = n_classes
         self.n_feats = n_feats
+        self.node_features = self.graph.ndata.pop('feat')
         self.special_entity_dict = special_node_dict
         self.special_relation_dict = special_relation_dict
         self.train_batch_size = self.config.train_batch_size

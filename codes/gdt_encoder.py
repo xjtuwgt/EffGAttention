@@ -100,8 +100,11 @@ class RGDTEncoder(nn.Module):
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
 
-    def forward(self, graph):
-        assert graph.number_of_nodes() <= self.ent_ember.num
+    def forward(self, graph, inputs: Tensor=None):
+        if inputs is None:
+            print(graph.number_of_nodes())
+            print(self.ent_ember.num)
+            assert graph.number_of_nodes() <= self.ent_ember.num
         e_h = self.ent_ember(torch.arange(graph.number_of_nodes()).to(self.dummy_param.device))
         r_h = self.rel_ember(torch.arange(self.config.num_relations).to(self.dummy_param.device))
         h = self.graph_encoder[0](graph, e_h, r_h)
@@ -122,8 +125,17 @@ class GraphNodeClassification(nn.Module):
                                            num_of_classes=self.config.num_classes,
                                            layer_num=self.config.layers)
 
-    def forward(self, graph, inputs: Tensor):
-        h = self.graph_encoder(graph, inputs)
+    def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
+        if self.config.relation_encoder and rel_emb is not None:
+            self.graph_encoder.rel_ember.init_with_tensor(data=rel_emb, freeze=rel_freeze)
+        if ent_emb is not None:
+            self.graph_encoder.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
+
+    def forward(self, graph, inputs: Tensor=None):
+        if self.config.relation_encoder:
+            h = self.graph_encoder(graph)
+        else:
+            h = self.graph_encoder(graph, inputs)
         logits = self.classifier(h)
         return logits
 

@@ -13,8 +13,9 @@ from dgl import DGLHeteroGraph
 from numpy import random
 
 
-def special_graph_dictionary_construction(graph, hop_num: int, n_relations: int):
+def special_graph_dictionary_construction(graph, hop_num: int, n_relations: int, cls: bool = True):
     """
+    :param cls:
     :param graph:
     :param hop_num: number of hops to generate special relations
     :param n_relations: number of relations in graph
@@ -22,7 +23,8 @@ def special_graph_dictionary_construction(graph, hop_num: int, n_relations: int)
     """
     special_relation_dict = {'loop_r': n_relations - 1}
     special_node_dict = {'cls': graph.number_of_nodes()}
-    graph.add_nodes(1)  # add 'cls' node
+    if cls:
+        graph.add_nodes(1)  # add 'cls' node, isolated node
     # +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     for hop in range(1, hop_num):
         special_relation_dict['in_hop_{}_r'.format(hop + 1)] = n_relations + (2 * (hop - 1))

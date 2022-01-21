@@ -83,7 +83,7 @@ def citation_graph_rand_split_construction(dataset: str):
     return new_graph, n_entities, n_relations, n_classes, n_feats
 
 
-def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=False, oon='zero'):
+def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=False, oon='zero', cls:bool = True):
     print('Bi-directional homogeneous graph: {}'.format(dataset))
     if rand_split:
         graph, n_entities, n_relations, n_classes, n_feats = \
@@ -93,7 +93,7 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
             citation_graph_reconstruction(dataset=dataset)
     graph, number_of_relations, special_node_dict, \
     special_relation_dict = special_graph_dictionary_construction(graph=graph, n_relations=n_relations,
-                                                                  hop_num=hop_num)
+                                                                  hop_num=hop_num, cls=cls)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata['label'][-2:] = -IGNORE_IDX
     graph.ndata['val_mask'][-2:] = False
@@ -113,7 +113,8 @@ def citation_k_hop_graph_reconstruction(dataset: str, hop_num=5, rand_split=Fals
     number_of_nodes = graph.number_of_nodes()
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     graph.ndata.update({'nid': torch.arange(0, number_of_nodes, dtype=torch.long)})
-    assert graph.ndata['nid'][-1] == special_node_dict['cls'] and special_node_dict['cls'] == number_of_nodes - 1
+    if cls:
+        assert graph.ndata['nid'][-1] == special_node_dict['cls'] and special_node_dict['cls'] == number_of_nodes - 1
     return graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, special_relation_dict
 
 
