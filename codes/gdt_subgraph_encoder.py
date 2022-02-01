@@ -6,19 +6,20 @@ import torch
 
 
 class GDTSubGraphEncoder(nn.Module):
+    """
+    Encoder for sub-graph w/o relation over edges
+    """
     def __init__(self, config):
         super(GDTSubGraphEncoder, self).__init__()
         self.config = config
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
-        if self.config.relative_position:
+        if self.config.relative_position:  # node embedding
             position_num = self.config.sub_graph_hop_num + 2
             if self.config.node_emb_dim == self.config.pos_emb_dim:
-                self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.pos_emb_dim)
+                self.position_ember = EmbeddingLayer(num=position_num, dim=self.config.pos_emb_dim)
             else:
-                self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.pos_emb_dim,
-                                                           project_dim=self.config.node_emb_dim)
+                self.position_ember = EmbeddingLayer(num=position_num, dim=self.config.pos_emb_dim,
+                                                     project_dim=self.config.node_emb_dim)
         self.graph_encoder = nn.ModuleList()
         self.graph_encoder.append(module=GDTLayer(in_ent_feats=self.config.node_emb_dim,
                                                   out_ent_feats=self.config.hidden_dim,
@@ -48,9 +49,13 @@ class GDTSubGraphEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
-    def init_graph_ember(self, ent_emb: Tensor = None, ent_freeze=False):
+    def init_graph_ember(self, ent_emb: Tensor = None, pos_emb: Tensor = None, pos_freeze=False,
+                         ent_freeze=False):
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
+
+        if pos_emb is not None:
+            self.position_ember.init_with_tensor(data=pos_emb, freeze=pos_freeze)
 
     def forward(self, batch_g_tuple, cls_or_anchor: str = 'cls'):
         batch_g = batch_g_tuple[0]
@@ -58,7 +63,7 @@ class GDTSubGraphEncoder(nn.Module):
         ent_features = self.ent_ember(ent_ids)
         if self.config.relative_position:
             arw_positions = batch_g.ndata['n_rw_label']
-            arw_pos_embed = self.position_embed_layer(arw_positions)
+            arw_pos_embed = self.position_ember(arw_positions)
             ent_features = ent_features + arw_pos_embed
         with batch_g.local_scope():
             h = ent_features
@@ -75,6 +80,10 @@ class GDTSubGraphEncoder(nn.Module):
 
 
 class RGDTSubGraphEncoder(nn.Module):
+    """
+    Encoder for sub-graph with relation over edges
+    """
+
     def __init__(self, config):
         super(RGDTSubGraphEncoder, self).__init__()
         self.config = config
@@ -89,17 +98,15 @@ class RGDTSubGraphEncoder(nn.Module):
             else:
                 self.rel_ember = EmbeddingLayer(num=self.config.num_relations, dim=self.config.rel_emb_dim,
                                                 project_dim=self.config.proj_emb_dim)
-                rel_in_dim = self.config.rel_emb_dim
+                rel_in_dim = self.config.proj_emb_dim
 
         if self.config.relative_position:
             position_num = self.config.sub_graph_hop_num + 2
             if self.config.node_emb_dim == self.config.pos_emb_dim:
-                self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.pos_emb_dim)
+                self.position_ember = EmbeddingLayer(num=position_num, dim=self.config.pos_emb_dim)
             else:
-                self.position_embed_layer = EmbeddingLayer(num=position_num,
-                                                           dim=self.config.pos_emb_dim,
-                                                           project_dim=self.config.node_emb_dim)
+                self.position_ember = EmbeddingLayer(num=position_num, dim=self.config.pos_emb_dim,
+                                                     project_dim=self.config.node_emb_dim)
 
         ent_in_dim = self.config.node_emb_dim
         self.graph_encoder = nn.ModuleList()
@@ -133,11 +140,14 @@ class RGDTSubGraphEncoder(nn.Module):
                                                       ppr_diff=self.config.ppr_diff))
         self.dummy_param = nn.Parameter(torch.empty(0))
 
-    def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, rel_freeze=False, ent_freeze=False):
+    def init_graph_ember(self, ent_emb: Tensor = None, rel_emb: Tensor = None, pos_emb: Tensor = None,
+                         rel_freeze=False, ent_freeze=False, pos_freeze=False):
         if rel_emb is not None:
             self.rel_ember.init_with_tensor(data=rel_emb, freeze=rel_freeze)
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
+        if pos_emb is not None:
+            self.position_ember.init_with_tensor(data=pos_emb, freeze=pos_freeze)
 
     def forward(self, batch_g_tuple, cls_or_anchor: str = 'cls'):
         batch_g = batch_g_tuple[0]
@@ -164,4 +174,3 @@ class RGDTSubGraphEncoder(nn.Module):
                 raise '{} is not supported'.format(cls_or_anchor)
             batch_graph_embed = h[batch_node_ids]
             return batch_graph_embed
-

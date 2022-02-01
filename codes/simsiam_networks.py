@@ -57,7 +57,7 @@ class SimSiam(nn.Module):
 
         p1 = self.predictor(z1)  # NxC
         p2 = self.predictor(z2)  # NxC
-        return p1, p2, z1.detach(), z2.detach()
+        return p1, p2, z1.detach(), z2.detach()  # detach means stop-gradient
 
     def encode(self, x, cls_or_anchor='cls', project: bool = False):
         z = self.graph_encoder(x, cls_or_anchor)
