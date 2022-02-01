@@ -27,6 +27,10 @@ class Projector(nn.Module):
 class SimSiam(nn.Module):
     """
     Build a SimSiam model.
+    The learning rate of backbone and projector should be different (the latter should be larger)
+    Why name this as predictor: predict the output of target networks (w/o gradient) based on the output of
+    online networks
+    Understanding Self-Supervised Learning Dynamics without Contrastive Pairs, ICML
     """
     def __init__(self, backbone: nn.Module, backbone_out_dim: int):
         super(SimSiam, self).__init__()
@@ -35,7 +39,7 @@ class SimSiam(nn.Module):
         self.hidden_dim = 4 * backbone_out_dim
         self.graph_encoder = backbone
         # build a 2-layer projection
-        self.projector = Projector(model_dim=self.prev_dim, hidden_dim=self.hidden_dim)  # output layer
+        self.predictor = Projector(model_dim=self.prev_dim, hidden_dim=self.hidden_dim)  # output layer
 
     def forward(self, x1, x2, cls_or_anchor='cls'):
         """
@@ -51,14 +55,14 @@ class SimSiam(nn.Module):
         z1 = self.graph_encoder(x1, cls_or_anchor)
         z2 = self.graph_encoder(x2, cls_or_anchor)
 
-        p1 = self.projector(z1)  # NxC
-        p2 = self.projector(z2)  # NxC
+        p1 = self.predictor(z1)  # NxC
+        p2 = self.predictor(z2)  # NxC
         return p1, p2, z1.detach(), z2.detach()
 
     def encode(self, x, cls_or_anchor='cls', project: bool = False):
         z = self.graph_encoder(x, cls_or_anchor)
         if project:
-            return self.projector(z)
+            return self.predictor(z)
         else:
             return z
 
