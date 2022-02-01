@@ -1,4 +1,4 @@
-import os, sys
+import os
 import numpy as np
 from evens import KG_DATA_FOLDER
 

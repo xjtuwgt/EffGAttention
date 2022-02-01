@@ -171,7 +171,7 @@ class NodeClassificationSubGraphDataset(Dataset):
     def __getitem__(self, idx):
         node_idx = self.data_node_ids[idx]
         anchor_node_ids = torch.LongTensor([node_idx])
-        samp_hop_num = random.randint(2, self.hop_num + 1)  ## sample sub-graph from 2-hop to k-hop (k >= 2)
+        samp_hop_num = random.randint(2, self.hop_num + 1)  # sample sub-graph from 2-hop to k-hop (k >= 2)
         samp_fanouts = self.fanouts[:samp_hop_num]
         cls_node_ids = torch.LongTensor([self.special_entity2id['cls']])
         subgraph, parent2sub_dict, _ = \
@@ -336,4 +336,3 @@ class NodeClassificationSubGraphAugmentationDataset(Dataset):
                 batch_anchor_id[idx] = _[2] + batch_graph_cls[idx - 1].data.item() + 1
         # +++++++++++++++++++++++++++++++++++++++
         return {'batch_graph': (batch_graphs, batch_graph_cls, batch_anchor_id), 'batch_label': batch_label}
-
