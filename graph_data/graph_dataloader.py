@@ -135,9 +135,8 @@ class SelfSupervisedNodeDataHelper(object):
 
 class NodeClassificationSubGraphDataset(Dataset):
     """
-    Graph representation learning with node labels
+    Sub-graph based node classification
     """
-
     def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
                  special_entity2id: dict, special_relation2id: dict, data_type: str, graph_type: str,
                  bi_directed: bool = True, self_loop: bool = False, edge_dir: str = 'in',

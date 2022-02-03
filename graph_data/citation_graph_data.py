@@ -25,8 +25,8 @@ def citation_graph_reconstruction(dataset: str):
     graph = dgl.remove_self_loop(g=graph)
     number_of_edges = graph.number_of_edges()
     edge_type_ids = torch.zeros(number_of_edges, dtype=torch.long)
-    graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)
-    graph = add_self_loop_to_graph(graph=graph, self_loop_r=1)
+    graph = add_relation_ids_to_graph(graph=graph, edge_type_ids=edge_type_ids)     # add relation type
+    graph = add_self_loop_to_graph(graph=graph, self_loop_r=1)  # add self-loop
     n_entities = graph.number_of_nodes()
     n_relations = 2
     in_degrees = graph.in_degrees()
