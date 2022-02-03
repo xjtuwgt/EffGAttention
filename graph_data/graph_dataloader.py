@@ -178,7 +178,7 @@ class NodeClassificationSubGraphDataset(Dataset):
         node_idx = self.data_node_ids[idx]
         anchor_node_ids = torch.LongTensor([node_idx])
         cls_node_ids = torch.LongTensor([self.special_entity2id['cls']])
-        print(self.fanouts)
+        # print(self.fanouts)
         subgraph, parent2sub_dict, _ = \
             anchor_node_sub_graph_extractor(graph=self.g,
                                             anchor_node_ids=anchor_node_ids,

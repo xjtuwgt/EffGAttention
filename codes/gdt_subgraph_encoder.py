@@ -49,11 +49,9 @@ class GDTSubGraphEncoder(nn.Module):
                                                       residual=self.config.residual,
                                                       ppr_diff=self.config.ppr_diff))
 
-    def init_graph_ember(self, ent_emb: Tensor = None, pos_emb: Tensor = None, pos_freeze=False,
-                         ent_freeze=False):
+    def init_graph_ember(self, ent_emb: Tensor = None, pos_emb: Tensor = None, pos_freeze=False, ent_freeze=False):
         if ent_emb is not None:
             self.ent_ember.init_with_tensor(data=ent_emb, freeze=ent_freeze)
-
         if pos_emb is not None:
             self.position_ember.init_with_tensor(data=pos_emb, freeze=pos_freeze)
 
@@ -62,7 +60,7 @@ class GDTSubGraphEncoder(nn.Module):
         ent_ids = batch_g.ndata['nid']
         ent_features = self.ent_ember(ent_ids)
         if self.config.relative_position:
-            arw_positions = batch_g.ndata['n_rw_label']
+            arw_positions = batch_g.ndata['n_rw_pos']
             arw_pos_embed = self.position_ember(arw_positions)
             ent_features = ent_features + arw_pos_embed
         with batch_g.local_scope():
@@ -156,7 +154,7 @@ class RGDTSubGraphEncoder(nn.Module):
         ent_features = self.ent_ember(ent_ids)
         rel_features = self.rel_ember(rel_ids)
         if self.config.relative_position:
-            arw_positions = batch_g.ndata['n_rw_label']
+            arw_positions = batch_g.ndata['n_rw_pos']
             arw_pos_embed = self.position_embed_layer(arw_positions)
             ent_features = ent_features + arw_pos_embed
         with batch_g.local_scope():
