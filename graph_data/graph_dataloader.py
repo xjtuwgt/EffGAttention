@@ -14,6 +14,9 @@ from evens import PROJECT_FOLDER
 
 
 class SubGraphPairDataset(Dataset):
+    """
+    Pair of sub-graphs datasets for self-supervised learning
+    """
     def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list, special_entity2id: dict,
                  special_relation2id: dict, graph_type: str, restart_prob: float = 0.8, bi_directed: bool = True,
                  self_loop: bool = False, edge_dir: str = 'in', cls: bool = True):
@@ -132,6 +135,10 @@ class SelfSupervisedNodeDataHelper(object):
                                      collate_fn=SubGraphPairDataset.collate_fn, num_workers=self.config.cpu_num)
         return data_loader
 
+"""
+Node classification data set and data helper
+"""
+
 
 class NodeClassificationSubGraphDataset(Dataset):
     """
@@ -215,12 +222,15 @@ class NodeClassificationDataHelper(object):
                                                     hop_num=self.config.sub_graph_hop_num, rand_split=False,
                                                     oon=self.config.oon_type, cls=True)
             self.node_split_idx = None
-        else:
+        elif self.graph_type == 'ogb':
             graph, number_of_nodes, number_of_relations, n_classes, n_feats, special_node_dict, \
             special_relation_dict, node_split_idx = ogb_k_hop_graph_reconstruction(dataset=self.config.ogb_node_name,
                                                                                    hop_num=self.config.sub_graph_hop_num,
                                                                                    oon=self.config.oon_type, cls=True)
             self.node_split_idx = node_split_idx
+        else:
+            raise '{} is not supported'.format(self.graph_type)
+
         graph = dgl.remove_self_loop(g=graph)
         graph = graph.int().to(self.config.device)
         self.graph = graph
@@ -264,9 +274,9 @@ class NodeClassificationDataHelper(object):
         return data_loader
 
 
-class NodeClassificationSubGraphAugmentationDataset(Dataset):
+class NodeClassificationSubGraphAugDataset(Dataset):
     """
-    Graph representation learning with node labels with data augmentation
+    Graph representation learning with node labels with (data augmentation, by random adding edges)
     """
 
     def __init__(self, graph: DGLHeteroGraph, nentity: int, nrelation: int, fanouts: list,
