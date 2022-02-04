@@ -93,7 +93,7 @@ def default_parser():
     parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
     parser.add_argument('--rand_walk_restart_prob', type=float, default=0.8)
     parser.add_argument('--graph_augmentation', type=boolean_string, default='false')
-    parser.add_argument('--relative_position', type=boolean_string, default='true')
+    parser.add_argument('--relative_position', type=boolean_string, default='false')
     parser.add_argument('--cls_or_anchor', type=str, default='cls', choices=["cls", "anchor"])
     parser.add_argument('--oon_type', type=str, default='zero', choices=["zero", "one", "rand"])
     parser.add_argument('--siam_project', type=boolean_string, default='false')
@@ -141,7 +141,7 @@ def default_parser():
     parser.add_argument("--weight_decay", default=5e-4, type=float,
                         help="Weight decay if we apply some.")
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument("--fine_tuned_learning_rate", default=5e-5, type=float,
+    parser.add_argument("--fine_tuned_learning_rate", default=1e-5, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--fine_tuned_weight_decay", default=1e-8, type=float,
                         help="Weight decay if we apply some.")

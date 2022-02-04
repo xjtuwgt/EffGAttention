@@ -54,15 +54,14 @@ def model_train(model, data_helper, optimizer, scheduler, args):
     torch.autograd.set_detect_anomaly(True)
     # **********************************************************************************
     start_epoch = 0
+    train_data_loader = data_helper.data_loader(data_type='train')
+    logging.info('Loading training data = {} completed'.format(len(train_data_loader)))
     # **********************************************************************************
     logging.info('Starting training the model...')
     train_iterator = trange(start_epoch, start_epoch + int(args.num_train_epochs), desc="Epoch",
                             disable=args.local_rank not in [-1, 0])
-    train_data_loader = data_helper.data_loader(data_type='train')
-    logging.info('Loading training data = {} completed'.format(len(train_data_loader)))
     logging.info('*' * 75)
-
-    for epoch in range(args.num_train_epochs):
+    for epoch in train_iterator:
         epoch_iterator = tqdm(train_data_loader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             model.train()
@@ -77,8 +76,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
             optimizer.step()
             scheduler.step()
         val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
-        print('validation accuracy = {}, Train loss = {}'.format(val_acc, loss))
-
+        logging.info('validation accuracy = {}, Train loss = {} after Epoch'.format(val_acc, loss, epoch))
     return best_val_acc, best_test_acc
 
 
