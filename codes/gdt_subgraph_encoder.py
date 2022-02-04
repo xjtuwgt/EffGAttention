@@ -14,7 +14,7 @@ class GDTSubGraphEncoder(nn.Module):
         self.config = config
         self.ent_ember = EmbeddingLayer(num=self.config.num_entities, dim=self.config.node_emb_dim)
         if self.config.relative_position:  # node embedding
-            position_num = self.config.sub_graph_hop_num + 2
+            position_num = self.config.sub_graph_hop_num + 2 + 1
             if self.config.node_emb_dim == self.config.pos_emb_dim:
                 self.position_ember = EmbeddingLayer(num=position_num, dim=self.config.pos_emb_dim)
             else:
