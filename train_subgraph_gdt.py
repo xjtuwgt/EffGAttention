@@ -76,8 +76,8 @@ def model_train(model, data_helper, optimizer, scheduler, args):
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
             optimizer.step()
             scheduler.step()
-        val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
-        print('validation accuracy = {}, Train loss = {}'.format(val_acc, loss))
+        # val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
+        # print('validation accuracy = {}, Train loss = {}'.format(val_acc, loss))
 
     return best_val_acc, best_test_acc
 
@@ -108,7 +108,7 @@ def main(args):
         # create model
         model = SimSiamNodeClassification(config=args)
         model.to(args.device)
-        # model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
+        model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
         # ++++++++++++++++++++++++++++++++++++
         logging.info('Model Parameter Configuration:')
         for name, param in model.named_parameters():
