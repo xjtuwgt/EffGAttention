@@ -107,8 +107,8 @@ def main(args):
         seed_everything(seed=args.seed)
         # create model
         model = SimSiamNodeClassification(config=args)
-        model.to(args.device)
         model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
+        model.to(args.device)
         # ++++++++++++++++++++++++++++++++++++
         logging.info('Model Parameter Configuration:')
         for name, param in model.named_parameters():
