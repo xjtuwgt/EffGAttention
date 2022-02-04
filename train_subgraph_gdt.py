@@ -5,7 +5,7 @@ from torch.optim import Adam
 from tqdm import tqdm, trange
 from codes.default_argparser import default_parser, complete_default_parser
 from transformers.optimization import get_cosine_schedule_with_warmup
-from graph_data.graph_dataloader import NodeClassificationDataHelper
+from graph_data.graph_dataloader import NodeClassificationSubGraphDataHelper
 from codes.simsiam_networks import SimSiamNodeClassification
 import logging
 from codes.utils import seed_everything
@@ -17,16 +17,21 @@ logging.basicConfig(format='%(asctime)s - %(levelname)s - %(name)s -   %(message
 logger = logging.getLogger(__name__)
 
 
-def accuracy(logits, labels, debug=False):
-    _, indices = torch.max(logits, dim=1)
-    correct = torch.sum(indices == labels)
-    if debug:
-        return correct.item() * 1.0 / len(labels), indices, labels
-    return correct.item() * 1.0 / len(labels)
-
-
-def evaluate(model, data_helper, data_type, debug=False, loss=False):
-    return
+def evaluate(model, data_helper, data_type, args):
+    data_loader = data_helper.data_loader(data_type=data_type)
+    epoch_iterator = tqdm(data_loader, desc="Iteration", disable=args.local_rank not in [-1, 0])
+    model.eval()
+    correct_pred = 0.0
+    total_examples = 0.0
+    for batch_idx, batch in enumerate(epoch_iterator):
+        batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
+        batch_logits = model(batch_graphs)
+        batch_size = batch_logits.shape[0]
+        total_examples = total_examples + batch_size
+        _, indices = torch.max(batch_logits, dim=1)
+        correct = torch.sum(indices == batch_labels).data.item()
+        correct_pred = correct_pred + correct
+    return correct_pred * 1.0 / total_examples
 
 
 def model_train(model, data_helper, optimizer, scheduler, args):
@@ -36,11 +41,11 @@ def model_train(model, data_helper, optimizer, scheduler, args):
     t0 = time.time()
     patience_count = 0
     loss_fcn = torch.nn.CrossEntropyLoss()
+    loss = 0.0
     torch.autograd.set_detect_anomaly(True)
-
     # **********************************************************************************
     start_epoch = 0
-    args.num_train_epochs = 1
+    args.num_train_epochs = 100
     # **********************************************************************************
     logging.info('Starting training the model...')
     train_iterator = trange(start_epoch, start_epoch + int(args.num_train_epochs), desc="Epoch",
@@ -54,21 +59,26 @@ def model_train(model, data_helper, optimizer, scheduler, args):
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
-
-            print(type(batch_graphs[0]), type(batch_graphs[1]), type(batch_graphs[2]))
-            print(type(batch))
-            print(batch.keys())
-        # forward
+            batch_logits = model(batch_graphs)
+            loss = loss_fcn(batch_logits, batch_labels)
+            optimizer.zero_grad()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
+            optimizer.step()
+            scheduler.step()
+        val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
+        print('validation accuracy = {}, Train loss = {}'.format(val_acc, loss))
 
     return best_val_acc, best_test_acc
 
 
 def main(args):
     args = complete_default_parser(args=args)
-    data_helper = NodeClassificationDataHelper(config=args)
+    data_helper = NodeClassificationSubGraphDataHelper(config=args)
     args.num_classes = data_helper.num_class
-    node_features = data_helper.node_features
+    node_features = data_helper.node_features  #
     args.num_entities = data_helper.number_of_nodes
+    args.node_emb_dim = data_helper.n_feats
     args.num_relations = data_helper.number_of_relations
     num_of_experiments = args.exp_number
     hyper_search_space = citation_hyper_parameter_space()
@@ -76,6 +86,7 @@ def main(args):
     search_best_test_acc = 0.0
     search_best_val_acc = 0.0
     search_best_settings = None
+
     for _ in range(num_of_experiments):
         args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
                                                                     seed=args.seed + 1)
@@ -87,8 +98,7 @@ def main(args):
         # create model
         model = SimSiamNodeClassification(config=args)
         model.to(args.device)
-        if args.relation_encoder:
-            model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
+        model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
         # ++++++++++++++++++++++++++++++++++++
         logging.info('Model Parameter Configuration:')
         for name, param in model.named_parameters():
@@ -96,7 +106,8 @@ def main(args):
                                                                       str(param.requires_grad)))
         logging.info('*' * 75)
         # create optimizer and scheduler
-        optimizer = Adam(params=model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+        optimizer = Adam(params=model.parameters(), lr=args.fine_tuned_learning_rate,
+                         weight_decay=args.fine_tuned_weight_decay)
         scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                     num_training_steps=args.num_train_epochs)
         # start model training

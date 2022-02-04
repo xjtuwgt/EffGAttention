@@ -87,7 +87,7 @@ def default_parser():
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
     parser.add_argument('--relation_encoder', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5,5')
+    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5')
     parser.add_argument('--sub_graph_hop_num', type=int, default=6)
     parser.add_argument('--sub_graph_edge_dir', type=str, default='in', choices=['in', 'out'])
     parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
@@ -144,7 +144,7 @@ def default_parser():
     parser.add_argument("--fine_tuned_learning_rate", default=1e-5, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--fine_tuned_weight_decay", default=1e-8, type=float,
-                        help="Weight deay if we apply some.")
+                        help="Weight decay if we apply some.")
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument("--adam_epsilon", default=1e-5, type=float,
                         help="Epsilon for Adam optimizer.")
