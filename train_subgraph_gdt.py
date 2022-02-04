@@ -108,7 +108,7 @@ def main(args):
         # create model
         model = SimSiamNodeClassification(config=args)
         model.to(args.device)
-        model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
+        # model.init_graph_ember(ent_emb=node_features, ent_freeze=True)
         # ++++++++++++++++++++++++++++++++++++
         logging.info('Model Parameter Configuration:')
         for name, param in model.named_parameters():
