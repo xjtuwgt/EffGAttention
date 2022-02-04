@@ -43,6 +43,7 @@ def subgraph_batch_to_device(batch: dict, device):
     batch_to = {'batch_graph': batch_graphs, 'batch_label': batch_labels}
     return batch_to
 
+
 def model_train(model, data_helper, optimizer, scheduler, args):
     dur = []
     best_val_acc = 0.0
@@ -96,8 +97,8 @@ def main(args):
     search_best_settings = None
 
     for _ in range(num_of_experiments):
-        args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
-                                                                    seed=args.seed + 1)
+        # args, hyper_setting_i = citation_random_search_hyper_tunner(args=args, search_space=hyper_search_space,
+        #                                                             seed=args.seed + 1)
         logging.info('Model Hyper-Parameter Configuration:')
         for key, value in vars(args).items():
             logging.info('Hyper-Para {}: {}'.format(key, value))
