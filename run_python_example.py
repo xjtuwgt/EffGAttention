@@ -246,7 +246,7 @@ g1 = dgl.edge_subgraph(graph=g, edges=[0, 2, 4])
 # #     MLP Layer used after graph vector representation
 
 from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.graph_dataloader import NodeClassificationDataHelper, SelfSupervisedNodeDataHelper
+from graph_data.graph_dataloader import NodeClassificationSubGraphDataHelper, SelfSupervisedNodeDataHelper
 from codes.utils import seed_everything
 from codes.simsiam_networks import SimSiamNodeClassification
 
