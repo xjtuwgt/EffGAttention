@@ -45,7 +45,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
     torch.autograd.set_detect_anomaly(True)
     # **********************************************************************************
     start_epoch = 0
-    args.num_train_epochs = 100
+    args.num_train_epochs = 200
     # **********************************************************************************
     logging.info('Starting training the model...')
     train_iterator = trange(start_epoch, start_epoch + int(args.num_train_epochs), desc="Epoch",
