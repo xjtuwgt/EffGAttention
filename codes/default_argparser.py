@@ -87,7 +87,7 @@ def default_parser():
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
     parser.add_argument('--relation_encoder', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5')
+    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5')
     parser.add_argument('--sub_graph_hop_num', type=int, default=6)
     parser.add_argument('--sub_graph_edge_dir', type=str, default='in', choices=['in', 'out'])
     parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
