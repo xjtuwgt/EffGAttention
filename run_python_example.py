@@ -88,8 +88,9 @@ edges = torch.tensor([0, 1, 2, 1, 2, 0, 2, 3, 3, 4, 5, 4, 5, 3]), \
         torch.tensor([1, 2, 0, 0, 1, 2, 3, 2, 4, 5, 3, 3, 4, 5])  # 边：2->3, 5->5, 3->0
 g = dgl.graph(edges)
 g.ndata['n_id'] = torch.arange(0, 6)
+device = 'cpu'
+print(g.to(device))
 
-g1 = dgl.edge_subgraph(graph=g, edges=[0, 2, 4])
 
 # print(g1.ndata['n_id'])
 #
@@ -245,52 +246,52 @@ g1 = dgl.edge_subgraph(graph=g, edges=[0, 2, 4])
 # # """
 # #     MLP Layer used after graph vector representation
 
-from codes.default_argparser import default_parser, complete_default_parser
-from graph_data.graph_dataloader import NodeClassificationSubGraphDataHelper, SelfSupervisedNodeDataHelper
-from codes.utils import seed_everything
-from codes.simsiam_networks import SimSiamNodeClassification
-
-args = default_parser().parse_args()
-args = complete_default_parser(args=args)
-
-seed_everything(seed=args.seed)
-
-dataHelper = SelfSupervisedNodeDataHelper(config=args)
-ssl_train_data = dataHelper.data_loader()
-start_time = time()
-for batch_idx, batch in enumerate(ssl_train_data):
-    # print('ratio = {}'.format(batch['batch_graph_2'][0].number_of_nodes() * 1.0/dataHelper.number_of_nodes))
-    if batch_idx % 200 == 0:
-        print(batch_idx)
-        # print(batch['batch_graph_2'][0].number_of_nodes())
-        print('ratio = {}'.format(batch['batch_graph_2'][0].number_of_nodes() * 1.0 / dataHelper.number_of_nodes))
-print('Runtime = {}'.format(time() - start_time))
-# datahelper = node_classification_data_helper(config=args)
-# args.num_classes = datahelper.num_class
-# args.node_emb_dim = datahelper.n_feats
-# node_features = datahelper.graph.ndata.pop('feat')
-# print(node_features.shape)
+# from codes.default_argparser import default_parser, complete_default_parser
+# from graph_data.graph_dataloader import NodeClassificationSubGraphDataHelper, SelfSupervisedNodeDataHelper
+# from codes.utils import seed_everything
+# from codes.simsiam_networks import SimSiamNodeClassification
 #
-# print(datahelper.graph.device)
+# args = default_parser().parse_args()
+# args = complete_default_parser(args=args)
 #
-# train_data = datahelper.data_loader(data_type='train')
-
-# simsiam_classifier = SimSiamNodeClassification(config=args)
-# print(simsiam_classifier)
-
-# simsiam_model = SimSiam_Model_Builder(config=args)
-# simsiam_model.graph_encoder.init_graph_ember(ent_emb=node_features, ent_freeze=True)
-# #
-# print(simsiam_model)
+# seed_everything(seed=args.seed)
+#
+# dataHelper = SelfSupervisedNodeDataHelper(config=args)
+# ssl_train_data = dataHelper.data_loader()
 # start_time = time()
+# for batch_idx, batch in enumerate(ssl_train_data):
+#     # print('ratio = {}'.format(batch['batch_graph_2'][0].number_of_nodes() * 1.0/dataHelper.number_of_nodes))
+#     if batch_idx % 200 == 0:
+#         print(batch_idx)
+#         # print(batch['batch_graph_2'][0].number_of_nodes())
+#         print('ratio = {}'.format(batch['batch_graph_2'][0].number_of_nodes() * 1.0 / dataHelper.number_of_nodes))
+# print('Runtime = {}'.format(time() - start_time))
+# # datahelper = node_classification_data_helper(config=args)
+# # args.num_classes = datahelper.num_class
+# # args.node_emb_dim = datahelper.n_feats
+# # node_features = datahelper.graph.ndata.pop('feat')
+# # print(node_features.shape)
+# #
+# # print(datahelper.graph.device)
+# #
+# # train_data = datahelper.data_loader(data_type='train')
 #
-# for batch_idx, batch in enumerate(train_data):
-#     print(batch_idx)
-#     # batch_graph = batch['batch_graph']
-#     # print(batch_graph[0].ndata['nid'])
-#     # cls_idx = batch_graph[1]
-#     # print(batch_graph[0].ndata['nid'][cls_idx])
-#     # print(batch_graph[2])
-#     # simsiam_model.encode(batch_graph)
+# # simsiam_classifier = SimSiamNodeClassification(config=args)
+# # print(simsiam_classifier)
 #
-# print('runtime = {}'.format(time() - start_time))
+# # simsiam_model = SimSiam_Model_Builder(config=args)
+# # simsiam_model.graph_encoder.init_graph_ember(ent_emb=node_features, ent_freeze=True)
+# # #
+# # print(simsiam_model)
+# # start_time = time()
+# #
+# # for batch_idx, batch in enumerate(train_data):
+# #     print(batch_idx)
+# #     # batch_graph = batch['batch_graph']
+# #     # print(batch_graph[0].ndata['nid'])
+# #     # cls_idx = batch_graph[1]
+# #     # print(batch_graph[0].ndata['nid'][cls_idx])
+# #     # print(batch_graph[2])
+# #     # simsiam_model.encode(batch_graph)
+# #
+# # print('runtime = {}'.format(time() - start_time))

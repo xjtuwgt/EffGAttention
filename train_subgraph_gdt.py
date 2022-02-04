@@ -34,6 +34,14 @@ def evaluate(model, data_helper, data_type, args):
     return correct_pred * 1.0 / total_examples
 
 
+def subgraph_batch_to_device(batch: dict, device):
+    batch_graphs = batch['batch_graph']
+    batch_labels = batch['batch_label']
+    batch_graphs = [_.to(device) for _ in batch_graphs]
+    batch_labels = batch_labels.to(device)
+    batch_to = {'batch_graph': batch_graphs, 'batch_label': batch_labels}
+    return batch_to
+
 def model_train(model, data_helper, optimizer, scheduler, args):
     dur = []
     best_val_acc = 0.0
@@ -58,7 +66,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
         epoch_iterator = tqdm(train_data_loader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             model.train()
-            print(batch.keys())
+            batch = subgraph_batch_to_device(batch=batch, device=args.device)
             batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
 
             batch_logits = model(batch_graphs)
