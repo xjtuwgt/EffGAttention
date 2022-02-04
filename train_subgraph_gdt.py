@@ -58,7 +58,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
         epoch_iterator = tqdm(train_data_loader, desc="Iteration", disable=args.local_rank not in [-1, 0])
         for step, batch in enumerate(epoch_iterator):
             model.train()
-            print(batch)
+            print(batch.keys())
             batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
 
             batch_logits = model(batch_graphs)
