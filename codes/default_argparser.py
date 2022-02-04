@@ -141,7 +141,7 @@ def default_parser():
     parser.add_argument("--weight_decay", default=5e-4, type=float,
                         help="Weight decay if we apply some.")
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument("--fine_tuned_learning_rate", default=1e-5, type=float,
+    parser.add_argument("--fine_tuned_learning_rate", default=5e-5, type=float,
                         help="The initial learning rate for Adam.")
     parser.add_argument("--fine_tuned_weight_decay", default=1e-8, type=float,
                         help="Weight decay if we apply some.")
