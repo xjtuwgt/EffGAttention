@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import torch
-from torch.optim import Adam
+from torch.optim import Adam, AdamW
 from tqdm import tqdm, trange
 from codes.default_argparser import default_parser, complete_default_parser
 from transformers.optimization import get_cosine_schedule_with_warmup
@@ -115,7 +115,7 @@ def main(args):
                                                                       str(param.requires_grad)))
         logging.info('*' * 75)
         # create optimizer and scheduler
-        optimizer = Adam(params=model.parameters(), lr=args.fine_tuned_learning_rate,
+        optimizer = AdamW(params=model.parameters(), lr=args.fine_tuned_learning_rate,
                          weight_decay=args.fine_tuned_weight_decay)
         scheduler = get_cosine_schedule_with_warmup(optimizer=optimizer, num_warmup_steps=10,
                                                     num_training_steps=args.num_train_epochs)
