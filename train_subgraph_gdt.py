@@ -24,6 +24,7 @@ def evaluate(model, data_helper, data_type, args):
     correct_pred = 0.0
     total_examples = 0.0
     for batch_idx, batch in enumerate(epoch_iterator):
+        batch = subgraph_batch_to_device(batch=batch, device=args.device)
         batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
         batch_logits = model(batch_graphs)
         batch_size = batch_logits.shape[0]
@@ -76,8 +77,8 @@ def model_train(model, data_helper, optimizer, scheduler, args):
             torch.nn.utils.clip_grad_norm_(model.parameters(), args.max_grad_norm)
             optimizer.step()
             scheduler.step()
-        # val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
-        # print('validation accuracy = {}, Train loss = {}'.format(val_acc, loss))
+        val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
+        print('validation accuracy = {}, Train loss = {}'.format(val_acc, loss))
 
     return best_val_acc, best_test_acc
 
