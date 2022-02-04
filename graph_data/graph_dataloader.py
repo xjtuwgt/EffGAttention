@@ -274,8 +274,9 @@ class NodeClassificationSubGraphDataHelper(object):
             data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
                                      collate_fn=NodeClassificationSubGraphDataset.collate_fn)
         else:
-            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
-                                     collate_fn=NodeClassificationSubGraphDataset.collate_fn)
+            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle,
+                                     collate_fn=NodeClassificationSubGraphDataset.collate_fn,
+                                     num_workers=self.config.cpu_num)
         return data_loader
 
 
