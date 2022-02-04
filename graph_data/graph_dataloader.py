@@ -234,8 +234,6 @@ class NodeClassificationSubGraphDataHelper(object):
             raise '{} is not supported'.format(self.graph_type)
 
         graph = dgl.remove_self_loop(g=graph)  # remove self-loop edge in graph
-        if torch.cuda.is_available():
-            graph = graph.int().to(self.config.device)
         self.graph = graph
         self.number_of_nodes = number_of_nodes
         self.number_of_relations = number_of_relations

@@ -59,6 +59,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
         for step, batch in enumerate(epoch_iterator):
             model.train()
             batch_graphs, batch_labels = batch['batch_graph'], batch['batch_label']
+
             batch_logits = model(batch_graphs)
             loss = loss_fcn(batch_logits, batch_labels)
             optimizer.zero_grad()
