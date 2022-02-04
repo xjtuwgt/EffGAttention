@@ -131,8 +131,8 @@ class SelfSupervisedNodeDataHelper(object):
             data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
                                      collate_fn=SubGraphPairDataset.collate_fn, num_workers=0)
         else:
-            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle, pin_memory=True,
-                                     collate_fn=SubGraphPairDataset.collate_fn)
+            data_loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=shuffle,
+                                     collate_fn=SubGraphPairDataset.collate_fn, num_workers=self.config.cpu_num)
         return data_loader
 
 """
