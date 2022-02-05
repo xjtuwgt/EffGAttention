@@ -77,6 +77,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
             scheduler.step()
         val_acc = evaluate(model=model, args=args, data_type='valid', data_helper=data_helper)
         if best_val_acc < val_acc:
+            best_val_acc = val_acc
             best_test_acc = evaluate(model=model, args=args, data_type='test', data_helper=data_helper)
 
         logging.info('validation acc = {}, test acc = {},  Train loss = {:.5f} after Epoch {}'.format(val_acc, best_test_acc,
