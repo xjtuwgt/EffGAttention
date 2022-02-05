@@ -94,7 +94,7 @@ def default_parser():
     parser.add_argument('--rand_walk_restart_prob', type=float, default=0.8)
     parser.add_argument('--graph_augmentation', type=boolean_string, default='false')
     parser.add_argument('--relative_position', type=boolean_string, default='true')
-    parser.add_argument('--cls_or_anchor', type=str, default='cls', choices=["cls", "anchor"])
+    parser.add_argument('--cls_or_anchor', type=str, default='anchor', choices=["cls", "anchor"])
     parser.add_argument('--oon_type', type=str, default='zero', choices=["zero", "one", "rand"])
     parser.add_argument('--siam_project', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -106,10 +106,10 @@ def default_parser():
     parser.add_argument('--pos_emb_dim', type=int, default=300)
     parser.add_argument('--proj_emb_dim', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--feat_drop', type=float, default=0.45)
-    parser.add_argument('--attn_drop', type=float, default=0.35)
-    parser.add_argument('--edge_drop', type=float, default=0.1)
-    parser.add_argument('--out_drop', type=float, default=0.2)
+    parser.add_argument('--feat_drop', type=float, default=0.35)
+    parser.add_argument('--attn_drop', type=float, default=0.25)
+    parser.add_argument('--edge_drop', type=float, default=0.05)
+    parser.add_argument('--out_drop', type=float, default=0.1)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--rescale_res', type=boolean_string, default='false')
     parser.add_argument('--ppr_diff', type=boolean_string, default='true')
