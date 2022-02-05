@@ -106,9 +106,9 @@ def default_parser():
     parser.add_argument('--pos_emb_dim', type=int, default=300)
     parser.add_argument('--proj_emb_dim', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--feat_drop', type=float, default=0.5)
+    parser.add_argument('--feat_drop', type=float, default=0.45)
     parser.add_argument('--attn_drop', type=float, default=0.35)
-    parser.add_argument('--edge_drop', type=float, default=0.25)
+    parser.add_argument('--edge_drop', type=float, default=0.1)
     parser.add_argument('--out_drop', type=float, default=0.2)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--rescale_res', type=boolean_string, default='true')
@@ -116,7 +116,7 @@ def default_parser():
     parser.add_argument('--concat', type=boolean_string, default='false')
     parser.add_argument('--stanford', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--gnn_hop_num', type=int, default=4)
+    parser.add_argument('--gnn_hop_num', type=int, default=5)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--hidden_dim', type=int, default=256)
     parser.add_argument('--head_num', type=int, default=8)
@@ -132,7 +132,7 @@ def default_parser():
     parser.add_argument("--gpu", type=int, default=-1, help="which GPU to use. Set -1 to use CPU.")
     # learning and log ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument('--seed', type=int, default=42, help="random seed for initialization")
-    parser.add_argument("--num_train_epochs", default=100, type=int,
+    parser.add_argument("--num_train_epochs", default=200, type=int,
                         help="Total number of training epochs to perform.")
     parser.add_argument('--gradient_accumulation_steps', type=int, default=1,
                         help="Number of updates steps to accumulate before performing a backward/update pass.")
@@ -143,7 +143,7 @@ def default_parser():
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument("--fine_tuned_learning_rate", default=1e-5, type=float,
                         help="The initial learning rate for Adam.")
-    parser.add_argument("--fine_tuned_weight_decay", default=1e-5, type=float,
+    parser.add_argument("--fine_tuned_weight_decay", default=1e-6, type=float,
                         help="Weight decay if we apply some.")
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     parser.add_argument("--adam_epsilon", default=1e-5, type=float,
