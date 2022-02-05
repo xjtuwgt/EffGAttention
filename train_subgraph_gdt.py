@@ -79,7 +79,7 @@ def model_train(model, data_helper, optimizer, scheduler, args):
         if best_val_acc < val_acc:
             best_test_acc = evaluate(model=model, args=args, data_type='test', data_helper=data_helper)
 
-        logging.info('validation acc = {}, test acc = {},  Train loss = {} after Epoch'.format(val_acc, best_test_acc,
+        logging.info('validation acc = {}, test acc = {},  Train loss = {:.5f} after Epoch {}'.format(val_acc, best_test_acc,
                                                                                                loss, epoch))
     return best_val_acc, best_test_acc
 
