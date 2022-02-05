@@ -106,9 +106,9 @@ def default_parser():
     parser.add_argument('--pos_emb_dim', type=int, default=300)
     parser.add_argument('--proj_emb_dim', type=int, default=-1)
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--feat_drop', type=float, default=0.55)
-    parser.add_argument('--attn_drop', type=float, default=0.45)
-    parser.add_argument('--edge_drop', type=float, default=0.0)
+    parser.add_argument('--feat_drop', type=float, default=0.5)
+    parser.add_argument('--attn_drop', type=float, default=0.35)
+    parser.add_argument('--edge_drop', type=float, default=0.25)
     parser.add_argument('--out_drop', type=float, default=0.2)
     parser.add_argument('--residual', type=boolean_string, default='true')
     parser.add_argument('--rescale_res', type=boolean_string, default='false')
