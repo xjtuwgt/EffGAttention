@@ -87,14 +87,14 @@ def default_parser():
     parser.add_argument('--encoder_v2', type=boolean_string, default='false')
     parser.add_argument('--relation_encoder', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5,5,5')
+    parser.add_argument('--sub_graph_fanouts', type=str, default='10,5,5,5')
     parser.add_argument('--sub_graph_hop_num', type=int, default=6)
     parser.add_argument('--sub_graph_edge_dir', type=str, default='in', choices=['in', 'out'])
     parser.add_argument('--sub_graph_self_loop', type=boolean_string, default='true')
     parser.add_argument('--rand_walk_restart_prob', type=float, default=0.8)
     parser.add_argument('--graph_augmentation', type=boolean_string, default='false')
     parser.add_argument('--relative_position', type=boolean_string, default='true')
-    parser.add_argument('--cls_or_anchor', type=str, default='cls', choices=["cls", "anchor"])
+    parser.add_argument('--cls_or_anchor', type=str, default='anchor', choices=["cls", "anchor"])
     parser.add_argument('--oon_type', type=str, default='zero', choices=["zero", "one", "rand"])
     parser.add_argument('--siam_project', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -116,7 +116,7 @@ def default_parser():
     parser.add_argument('--concat', type=boolean_string, default='false')
     parser.add_argument('--stanford', type=boolean_string, default='false')
     # ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-    parser.add_argument('--gnn_hop_num', type=int, default=6)
+    parser.add_argument('--gnn_hop_num', type=int, default=4)
     parser.add_argument('--alpha', type=float, default=0.1)
     parser.add_argument('--hidden_dim', type=int, default=256)
     parser.add_argument('--head_num', type=int, default=8)
